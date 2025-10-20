@@ -40,7 +40,7 @@
 }
 
 @theme inline {
-  /* Font family is defined in layout.tsx */
+  --font-sans: var(--font-geist-sans);
 
   /* Color System - Travel-focused palette */
   --color-background: var(--background);

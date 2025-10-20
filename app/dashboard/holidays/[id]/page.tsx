@@ -2,13 +2,14 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Calendar, MapPin, DollarSign, Plane, TrendingDown } from "lucide-react"
+import { ArrowLeft, Calendar, MapPin, DollarSign, Plane, TrendingDown, Sparkles } from "lucide-react"
 import Link from "next/link"
-import type { Holiday, Flight, AIInsight } from "@/lib/types"
+import type { Holiday, Flight, AIInsight, Alert } from "@/lib/types"
 import HolidayHeader from "@/components/holiday-header"
-import SearchFlightsButton from "@/components/search-flights-button"
 import FlightCard from "@/components/flight-card"
 import GenerateInsightsButton from "@/components/generate-insights-button"
+import AiScoutButton from "@/components/ai-scout-button"
+import VerifyFlightsButton from "@/components/verify-flights-button"
 
 export default async function HolidayDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -44,9 +45,21 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
     .eq("holiday_id", id)
     .order("created_at", { ascending: false })
 
+  // Fetch alerts
+  const { data: alerts } = await supabase
+    .from("alerts")
+    .select("*")
+    .eq("holiday_id", id)
+    .order("created_at", { ascending: false })
+    .limit(5)
+
   const holidayData = holiday as Holiday
   const flightData = (flights as Flight[]) || []
   const insightData = (insights as AIInsight[]) || []
+  const alertData = (alerts as Alert[]) || []
+
+  const needsAiScan = holidayData.use_ai_discovery && !holidayData.ai_discovery_results
+  const hasAiResults = holidayData.ai_discovery_results && holidayData.ai_discovery_results.length > 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,24 +77,40 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         {/* Holiday Info */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle className="text-3xl">{holidayData.name}</CardTitle>
-            <CardDescription>Created on {new Date(holidayData.created_at).toLocaleDateString()}</CardDescription>
+            <div className="flex items-start justify-between">
+              <div>
+                <CardTitle className="text-3xl">{holidayData.name}</CardTitle>
+                <CardDescription>Created on {new Date(holidayData.created_at).toLocaleDateString()}</CardDescription>
+              </div>
+              {holidayData.use_ai_discovery && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
+                  AI Discovery
+                </Badge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                   <MapPin className="h-4 w-4" />
-                  Origin
+                  {holidayData.origins && holidayData.origins.length > 1 ? "Origins" : "Origin"}
                 </div>
-                <p className="font-semibold text-lg">{holidayData.origin}</p>
+                <p className="font-semibold text-lg">
+                  {holidayData.origins ? holidayData.origins.join(", ") : holidayData.origin}
+                </p>
               </div>
               <div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                   <MapPin className="h-4 w-4" />
                   Destinations
                 </div>
-                <p className="font-semibold text-lg">{holidayData.destinations.join(", ")}</p>
+                <p className="font-semibold text-lg">
+                  {holidayData.use_ai_discovery && holidayData.destinations.length === 0
+                    ? "Flexible (AI)"
+                    : holidayData.destinations.join(", ")}
+                </p>
               </div>
               <div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -92,6 +121,11 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                   {new Date(holidayData.start_date).toLocaleDateString()} -{" "}
                   {new Date(holidayData.end_date).toLocaleDateString()}
                 </p>
+                {holidayData.trip_duration_min && holidayData.trip_duration_max && (
+                  <p className="text-sm text-muted-foreground">
+                    {holidayData.trip_duration_min}-{holidayData.trip_duration_max} days
+                  </p>
+                )}
               </div>
               {holidayData.budget && (
                 <div>
@@ -99,19 +133,93 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                     <DollarSign className="h-4 w-4" />
                     Budget
                   </div>
-                  <p className="font-semibold text-lg">${holidayData.budget.toLocaleString()}</p>
+                  <p className="font-semibold text-lg">€{holidayData.budget.toLocaleString()}</p>
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
 
+        {needsAiScan && (
+          <Card className="mb-8 border-primary/50 bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">AI Route Discovery Ready</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Let AI scan the web for the best flight deals matching your criteria
+                    </p>
+                  </div>
+                </div>
+                <AiScoutButton holidayId={id} />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {hasAiResults && flightData.length === 0 && (
+          <Card className="mb-8 border-primary/50 bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Plane className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{holidayData.ai_discovery_results?.length} Routes Discovered</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Verify these routes with live flight data from Airhob
+                    </p>
+                    {holidayData.last_ai_scan && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Last scan: {new Date(holidayData.last_ai_scan).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <VerifyFlightsButton holidayId={id} />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {alertData.length > 0 && (
+          <Card className="mb-8 border-orange-500/50 bg-orange-500/5">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <TrendingDown className="h-5 w-5 text-orange-500" />
+                Recent Price Drops
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {alertData.map((alert) => (
+                  <div key={alert.id} className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{new Date(alert.created_at).toLocaleDateString()}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="line-through text-muted-foreground">€{alert.old_price}</span>
+                      <span className="font-semibold text-orange-500">€{alert.new_price}</span>
+                      <Badge variant="secondary" className="text-orange-500">
+                        -{alert.price_drop_percent.toFixed(0)}%
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Flights Section */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold">Flight Options</h2>
-              <SearchFlightsButton holidayId={id} />
+              {flightData.length > 0 && hasAiResults && <VerifyFlightsButton holidayId={id} variant="outline" />}
             </div>
 
             {flightData.length === 0 ? (
@@ -122,7 +230,11 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                   </div>
                   <h3 className="text-lg font-semibold mb-2">No flights found yet</h3>
                   <p className="text-muted-foreground text-center max-w-md mb-4">
-                    Click "Search Flights" to start tracking prices for this holiday
+                    {needsAiScan
+                      ? "Run AI discovery to find the best routes"
+                      : hasAiResults
+                        ? "Verify AI-discovered routes to see live prices"
+                        : "Start by running AI discovery or manually adding destinations"}
                   </p>
                 </CardContent>
               </Card>

@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { X } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { X, Sparkles } from "lucide-react"
 
 interface CreateHolidayFormProps {
   userId: string
@@ -21,11 +22,30 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
   const [error, setError] = useState<string | null>(null)
 
   const [name, setName] = useState("")
-  const [origin, setOrigin] = useState("")
+  const [origins, setOrigins] = useState<string[]>([""])
+  const [useAiDiscovery, setUseAiDiscovery] = useState(false)
   const [destinations, setDestinations] = useState<string[]>([""])
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [tripDurationMin, setTripDurationMin] = useState("7")
+  const [tripDurationMax, setTripDurationMax] = useState("14")
   const [budget, setBudget] = useState("")
+  const [preferredWeekdays, setPreferredWeekdays] = useState<string[]>([])
+  const [maxLayovers, setMaxLayovers] = useState("2")
+
+  const addOrigin = () => {
+    setOrigins([...origins, ""])
+  }
+
+  const removeOrigin = (index: number) => {
+    setOrigins(origins.filter((_, i) => i !== index))
+  }
+
+  const updateOrigin = (index: number, value: string) => {
+    const newOrigins = [...origins]
+    newOrigins[index] = value
+    setOrigins(newOrigins)
+  }
 
   const addDestination = () => {
     setDestinations([...destinations, ""])
@@ -41,15 +61,25 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
     setDestinations(newDestinations)
   }
 
+  const toggleWeekday = (day: string) => {
+    setPreferredWeekdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
-    // Validate
+    const validOrigins = origins.filter((o) => o.trim() !== "")
+    if (validOrigins.length === 0) {
+      setError("Please add at least one origin airport")
+      setIsLoading(false)
+      return
+    }
+
     const validDestinations = destinations.filter((d) => d.trim() !== "")
-    if (validDestinations.length === 0) {
-      setError("Please add at least one destination")
+    if (!useAiDiscovery && validDestinations.length === 0) {
+      setError("Please add at least one destination or enable AI discovery")
       setIsLoading(false)
       return
     }
@@ -68,11 +98,17 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
         .insert({
           user_id: userId,
           name,
-          origin: origin.trim(),
-          destinations: validDestinations,
+          origin: validOrigins[0], // Keep for backward compatibility
+          origins: validOrigins,
+          destinations: useAiDiscovery ? [] : validDestinations,
           start_date: startDate,
           end_date: endDate,
+          trip_duration_min: Number.parseInt(tripDurationMin),
+          trip_duration_max: Number.parseInt(tripDurationMax),
           budget: budget ? Number.parseFloat(budget) : null,
+          preferred_weekdays: preferredWeekdays.length > 0 ? preferredWeekdays : null,
+          max_layovers: Number.parseInt(maxLayovers),
+          use_ai_discovery: useAiDiscovery,
         })
         .select()
         .single()
@@ -106,39 +142,65 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="origin">Origin Airport</Label>
-            <Input
-              id="origin"
-              placeholder="e.g., JFK, LHR, SYD"
-              value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
-              required
-            />
-            <p className="text-xs text-muted-foreground">Enter the airport code where you'll be flying from</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Destination Airports</Label>
-            {destinations.map((destination, index) => (
+            <Label>Origin Airports</Label>
+            {origins.map((origin, index) => (
               <div key={index} className="flex gap-2">
                 <Input
-                  placeholder="e.g., CDG, FCO, BCN"
-                  value={destination}
-                  onChange={(e) => updateDestination(index, e.target.value)}
+                  placeholder="e.g., JFK, LHR, SYD"
+                  value={origin}
+                  onChange={(e) => updateOrigin(index, e.target.value)}
                   required
                 />
-                {destinations.length > 1 && (
-                  <Button type="button" variant="outline" size="icon" onClick={() => removeDestination(index)}>
+                {origins.length > 1 && (
+                  <Button type="button" variant="outline" size="icon" onClick={() => removeOrigin(index)}>
                     <X className="h-4 w-4" />
                   </Button>
                 )}
               </div>
             ))}
-            <Button type="button" variant="outline" onClick={addDestination} className="w-full bg-transparent">
-              Add Another Destination
+            <Button type="button" variant="outline" onClick={addOrigin} className="w-full bg-transparent">
+              Add Another Origin
             </Button>
-            <p className="text-xs text-muted-foreground">We'll track prices to all these destinations</p>
+            <p className="text-xs text-muted-foreground">Add multiple departure airports for more flexibility</p>
           </div>
+
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <Label htmlFor="ai-discovery" className="text-base font-medium">
+                  AI Destination Discovery
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground">Let AI suggest the best destinations for your budget</p>
+            </div>
+            <Switch id="ai-discovery" checked={useAiDiscovery} onCheckedChange={setUseAiDiscovery} />
+          </div>
+
+          {!useAiDiscovery && (
+            <div className="space-y-2">
+              <Label>Destination Airports</Label>
+              {destinations.map((destination, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    placeholder="e.g., CDG, FCO, BCN"
+                    value={destination}
+                    onChange={(e) => updateDestination(index, e.target.value)}
+                    required
+                  />
+                  {destinations.length > 1 && (
+                    <Button type="button" variant="outline" size="icon" onClick={() => removeDestination(index)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button type="button" variant="outline" onClick={addDestination} className="w-full bg-transparent">
+                Add Another Destination
+              </Button>
+              <p className="text-xs text-muted-foreground">We'll track prices to all these destinations</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -157,6 +219,31 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="duration-min">Min Trip Duration (days)</Label>
+              <Input
+                id="duration-min"
+                type="number"
+                value={tripDurationMin}
+                onChange={(e) => setTripDurationMin(e.target.value)}
+                min="1"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="duration-max">Max Trip Duration (days)</Label>
+              <Input
+                id="duration-max"
+                type="number"
+                value={tripDurationMax}
+                onChange={(e) => setTripDurationMax(e.target.value)}
+                min="1"
+                required
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="budget">Budget (Optional)</Label>
             <Input
@@ -169,6 +256,38 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
               step="0.01"
             />
             <p className="text-xs text-muted-foreground">Set a maximum budget to filter flight results</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Preferred Departure Days (Optional)</Label>
+            <div className="flex flex-wrap gap-2">
+              {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                <Button
+                  key={day}
+                  type="button"
+                  variant={preferredWeekdays.includes(day) ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => toggleWeekday(day)}
+                >
+                  {day.slice(0, 3)}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground">Select days you prefer to depart on</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="layovers">Max Layovers</Label>
+            <Input
+              id="layovers"
+              type="number"
+              value={maxLayovers}
+              onChange={(e) => setMaxLayovers(e.target.value)}
+              min="0"
+              max="3"
+              required
+            />
+            <p className="text-xs text-muted-foreground">Maximum number of stops you're willing to make</p>
           </div>
 
           {error && <p className="text-sm text-destructive">{error}</p>}

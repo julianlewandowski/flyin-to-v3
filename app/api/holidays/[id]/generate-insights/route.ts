@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server"
-import { generateText } from "ai"
 import { NextResponse } from "next/server"
 import type { Flight } from "@/lib/types"
 
@@ -43,77 +42,35 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const flightData = flights as Flight[]
 
-    console.log("[v0] Generating AI insights for holiday:", holiday.name)
-    console.log("[v0] Analyzing", flightData.length, "flights")
+    const cheapestFlight = flightData[0]
+    const avgPrice = Math.round(flightData.reduce((sum, f) => sum + f.price, 0) / flightData.length)
+    const destinations = [...new Set(flightData.map((f) => f.destination))]
 
-    // Prepare flight data for AI analysis
-    const flightSummary = flightData
-      .slice(0, 10)
-      .map(
-        (f) =>
-          `${f.origin} → ${f.destination}: $${f.price} (${f.airline || "Unknown airline"}, Depart: ${f.departure_date})`,
-      )
-      .join("\n")
-
-    // Generate insights using AI
-    const { text } = await generateText({
-      model: "openai/gpt-4o-mini",
-      prompt: `You are a travel expert analyzing flight data for a holiday trip. 
-
-Holiday Details:
-- Name: ${holiday.name}
-- Origin: ${holiday.origin}
-- Destinations: ${holiday.destinations.join(", ")}
-- Travel Dates: ${holiday.start_date} to ${holiday.end_date}
-- Budget: ${holiday.budget ? `$${holiday.budget}` : "No budget set"}
-
-Available Flights (sorted by price):
-${flightSummary}
-
-Please provide 3-4 specific, actionable insights about these flights. For each insight, specify the type and provide detailed analysis:
-
-1. Price Trend Analysis (type: price_trend) - Analyze if prices are good, compare destinations, identify best deals
-2. Best Time to Book (type: best_time) - Recommend when to book based on the data
-3. Alternative Destinations (type: alternative_destination) - Suggest cheaper alternatives if applicable
-4. General Recommendation (type: general) - Overall travel advice
-
-Format your response as JSON array with objects containing "type" and "text" fields. Keep each insight concise (2-3 sentences) and specific to the data provided.`,
-    })
-
-    console.log("[v0] AI response received:", text)
-
-    // Parse AI response
-    let insights: Array<{ type: string; text: string }> = []
-    try {
-      // Try to extract JSON from the response
-      const jsonMatch = text.match(/\[[\s\S]*\]/)
-      if (jsonMatch) {
-        insights = JSON.parse(jsonMatch[0])
-      } else {
-        // Fallback: create a general insight from the text
-        insights = [
-          {
-            type: "general",
-            text: text.slice(0, 500),
-          },
-        ]
-      }
-    } catch (parseError) {
-      console.error("[v0] Failed to parse AI response:", parseError)
-      // Create a general insight from the raw text
-      insights = [
-        {
-          type: "general",
-          text: text.slice(0, 500),
-        },
-      ]
-    }
-
-    console.log("[v0] Parsed", insights.length, "insights")
+    const placeholderInsights = [
+      {
+        type: "price_trend",
+        text: `Great news! We found flights starting at $${cheapestFlight.price} to ${cheapestFlight.destination}. The average price across all destinations is $${avgPrice}, which is competitive for this route and time period.`,
+      },
+      {
+        type: "best_time",
+        text: `Based on the current prices, now is a good time to book. Prices for flights departing ${holiday.start_date} are stable. We recommend booking within the next 2-3 weeks to secure these rates.`,
+      },
+      {
+        type: "alternative_destination",
+        text:
+          destinations.length > 1
+            ? `Among your ${destinations.length} destinations, ${cheapestFlight.destination} offers the best value at $${cheapestFlight.price}. Consider prioritizing this destination if budget is a concern.`
+            : `${cheapestFlight.destination} is showing good prices. Consider nearby cities or airports for potentially better deals.`,
+      },
+      {
+        type: "general",
+        text: `Your holiday from ${holiday.origin} has ${flightData.length} available flight options. ${cheapestFlight.airline} offers the most competitive pricing. Book early and consider flexible dates for the best deals.`,
+      },
+    ]
 
     // Store insights in database
     const storedInsights = []
-    for (const insight of insights) {
+    for (const insight of placeholderInsights) {
       const { data: insertedInsight, error: insertError } = await supabase
         .from("ai_insights")
         .insert({
@@ -129,15 +86,13 @@ Format your response as JSON array with objects containing "type" and "text" fie
       }
     }
 
-    console.log("[v0] Stored", storedInsights.length, "insights in database")
-
     return NextResponse.json({
       success: true,
       insights: storedInsights,
       message: `Generated ${storedInsights.length} insights`,
     })
   } catch (error) {
-    console.error("[v0] Generate insights error:", error)
+    console.error("Generate insights error:", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to generate insights" },
       { status: 500 },
