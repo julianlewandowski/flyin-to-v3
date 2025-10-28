@@ -22,7 +22,6 @@ export default function SignUpPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
@@ -39,6 +38,11 @@ export default function SignUpPage() {
     }
 
     try {
+      console.log("[v0] Creating Supabase client...")
+      const supabase = createClient()
+      console.log("[v0] Supabase client created successfully")
+
+      console.log("[v0] Attempting sign up for:", email)
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -46,10 +50,17 @@ export default function SignUpPage() {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       })
-      if (error) throw error
+
+      if (error) {
+        console.log("[v0] Sign up error:", error)
+        throw error
+      }
+
+      console.log("[v0] Sign up successful, redirecting to check-email")
       router.push("/auth/check-email")
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      console.error("[v0] Sign up failed:", error)
+      setError(error instanceof Error ? error.message : "An error occurred during sign up")
     } finally {
       setIsLoading(false)
     }
