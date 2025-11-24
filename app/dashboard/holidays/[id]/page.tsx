@@ -10,6 +10,8 @@ import FlightCard from "@/components/flight-card"
 import GenerateInsightsButton from "@/components/generate-insights-button"
 import AiScoutButton from "@/components/ai-scout-button"
 import VerifyFlightsButton from "@/components/verify-flights-button"
+import UnifiedFlightSearchButton from "@/components/unified-flight-search-button"
+
 
 export default async function HolidayDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -219,7 +221,10 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold">Flight Options</h2>
-              {flightData.length > 0 && hasAiResults && <VerifyFlightsButton holidayId={id} variant="outline" />}
+              <div className="flex items-center gap-3">
+                <UnifiedFlightSearchButton holidayId={id} />
+                {flightData.length > 0 && hasAiResults && <VerifyFlightsButton holidayId={id} variant="outline" />}
+              </div>
             </div>
 
             {flightData.length === 0 ? (

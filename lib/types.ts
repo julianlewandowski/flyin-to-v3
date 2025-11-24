@@ -209,7 +209,7 @@ export interface SerpApiFlightSearchParams {
   children?: number
   infants?: number
   class?: "economy" | "premium_economy" | "business" | "first"
-  sort_by?: "best" | "price" | "duration" | "take_off" | "landing"
+  sort_by?: 1 | 2 | 3 | 4 | 5 | 6 // 1=Top flights, 2=Price, 3=Departure time, 4=Arrival time, 5=Duration, 6=Emissions
   num?: number // Number of results (max ~100)
 }
 
