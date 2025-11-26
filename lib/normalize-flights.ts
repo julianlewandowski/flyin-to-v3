@@ -120,20 +120,21 @@ function extractLayovers(segments: FlightSegment[]): Layover[] {
 /**
  * Normalize a single SerpApi flight result to FlightOffer
  */
-export function normalizeFlightOffer(serpResult: any, provider: string = "serpapi"): FlightOffer | null {
+export function normalizeFlightOffer(serpResult: any, provider: string = "serpapi", defaultCurrency: string = "USD"): FlightOffer | null {
   try {
     // SerpApi response structure based on documentation:
     // Each flight offer has: flights[], price (number), layovers[], total_duration, etc.
     
     // Price can be a number directly or in an object
     let total = 0
-    let currency = "USD"
+    let currency = defaultCurrency
     
     if (typeof serpResult.price === "number") {
       total = serpResult.price
+      // Currency should come from the request parameters, use defaultCurrency
     } else if (serpResult.price && typeof serpResult.price === "object") {
       total = serpResult.price.total || serpResult.price.value || 0
-      currency = serpResult.price.currency || serpResult.price.currency_code || "USD"
+      currency = serpResult.price.currency || serpResult.price.currency_code || defaultCurrency
     } else {
       // Try other price fields
       total = serpResult.total_price || serpResult.price_value || 0
@@ -238,7 +239,7 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
  * Normalize multiple SerpApi results into FlightOffers
  * Filters out invalid offers
  */
-export function normalizeFlightOffers(serpResults: any[], provider: string = "serpapi"): FlightOffer[] {
+export function normalizeFlightOffers(serpResults: any[], provider: string = "serpapi", defaultCurrency: string = "USD"): FlightOffer[] {
   const offers: FlightOffer[] = []
 
   console.log(`[Normalize] Normalizing ${serpResults.length} raw results`)
@@ -246,7 +247,7 @@ export function normalizeFlightOffers(serpResults: any[], provider: string = "se
   for (let i = 0; i < serpResults.length; i++) {
     const result = serpResults[i]
     console.log(`[Normalize] Processing result ${i + 1}/${serpResults.length}`)
-    const offer = normalizeFlightOffer(result, provider)
+    const offer = normalizeFlightOffer(result, provider, defaultCurrency)
     if (offer) {
       offers.push(offer)
       console.log(`[Normalize] Successfully normalized offer ${i + 1}: ${offer.segments.length} segments, price: ${offer.price.total} ${offer.price.currency}`)

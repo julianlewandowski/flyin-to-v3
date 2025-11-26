@@ -317,7 +317,10 @@ export async function POST(
     // ========================================================================
     console.log("[Unified Search] STEP 4: Normalizing results...")
     console.log("[Unified Search] Sample raw result structure:", allRawResults.length > 0 ? JSON.stringify(allRawResults[0], null, 2).substring(0, 1500) : "No results")
-    const normalizedOffers = normalizeFlightOffers(allRawResults, "serpapi")
+    
+    // Get currency from search params (should be consistent across all searches)
+    const requestCurrency = searchParamsArray[0]?.currency || "EUR"
+    const normalizedOffers = normalizeFlightOffers(allRawResults, "serpapi", requestCurrency)
 
     console.log(
       `[Unified Search] Normalized ${normalizedOffers.length} offers from ${allRawResults.length} raw results`

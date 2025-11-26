@@ -118,8 +118,112 @@ export default function UnifiedFlightSearchButton({ holidayId }: { holidayId: st
                 <p className="text-sm text-muted-foreground">
                   Found {result.offers.length} best-matching flight offers
                 </p>
+                
+                {/* Display flight offers */}
+                <div className="space-y-3">
+                  {result.offers.map((offer: any, index: number) => (
+                    <div key={offer.id || index} className="border rounded-lg p-4 space-y-2">
+                      {/* Price and Score */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-2xl font-bold">
+                            {offer.price?.currency || "EUR"} {offer.price?.total || 0}
+                          </span>
+                          {offer.score !== undefined && (
+                            <span className="text-xs text-muted-foreground">
+                              Score: {offer.score}/100
+                            </span>
+                          )}
+                        </div>
+                        {offer.booking_link && (
+                          <a
+                            href={offer.booking_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary hover:underline"
+                          >
+                            Book →
+                          </a>
+                        )}
+                      </div>
+
+                      {/* Flight Segments */}
+                      <div className="space-y-2">
+                        {offer.segments?.map((segment: any, segIndex: number) => (
+                          <div key={segIndex} className="flex items-center gap-3 text-sm">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold">{segment.from?.code || "N/A"}</span>
+                                <span className="text-muted-foreground">→</span>
+                                <span className="font-semibold">{segment.to?.code || "N/A"}</span>
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1">
+                                {segment.airline?.name || "Unknown airline"} {segment.flight_number || ""}
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {segment.departure ? new Date(segment.departure).toLocaleString() : "N/A"}
+                            </div>
+                            {segment.duration_minutes && (
+                              <div className="text-xs text-muted-foreground">
+                                {Math.floor(segment.duration_minutes / 60)}h {segment.duration_minutes % 60}m
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Layovers */}
+                      {offer.layovers && offer.layovers.length > 0 && (
+                        <div className="text-xs text-muted-foreground">
+                          {offer.layovers.length} layover{offer.layovers.length > 1 ? "s" : ""}
+                          {offer.layovers.map((layover: any, idx: number) => (
+                            <span key={idx}>
+                              {idx > 0 && ", "}
+                              {layover.airport} ({Math.floor(layover.duration_minutes / 60)}h {layover.duration_minutes % 60}m)
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Total Duration and Stops */}
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        {offer.total_duration_minutes && (
+                          <span>
+                            Total: {Math.floor(offer.total_duration_minutes / 60)}h {offer.total_duration_minutes % 60}m
+                          </span>
+                        )}
+                        {offer.num_stops !== undefined && (
+                          <span>
+                            {offer.num_stops === 0 ? "Direct" : `${offer.num_stops} stop${offer.num_stops > 1 ? "s" : ""}`}
+                          </span>
+                        )}
+                        {offer.class && (
+                          <span className="capitalize">{offer.class}</span>
+                        )}
+                      </div>
+
+                      {/* Reasoning (if scored) */}
+                      {offer.reasoning && (
+                        <div className="text-xs text-muted-foreground italic border-t pt-2">
+                          {offer.reasoning}
+                        </div>
+                      )}
+
+                      {/* Notes */}
+                      {offer.notes && offer.notes.length > 0 && (
+                        <div className="text-xs text-muted-foreground">
+                          {offer.notes.map((note: string, idx: number) => (
+                            <div key={idx}>• {note}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
                 {result.metadata && (
-                  <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t">
                     <p>Retrieved: {result.metadata.total_retrieved} raw results</p>
                     <p>Normalized: {result.metadata.total_normalized} offers</p>
                     <p>Scored: {result.metadata.total_scored} offers</p>
