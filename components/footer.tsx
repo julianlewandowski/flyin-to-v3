@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Globe, Linkedin } from "lucide-react";
 import flyinLogo from "@/app/assets/flyin-color-logo.svg";
 
@@ -57,8 +58,27 @@ export const Footer = () => {
           </div>
         </div>
 
+        {/* Legal Links */}
+        <div className="mt-8 pt-6 border-t border-border">
+          <div className="flex flex-col md:flex-row justify-center items-center gap-4 md:gap-6">
+            <Link 
+              href="/privacy" 
+              className="text-xs text-muted-foreground hover:text-primary transition-colors duration-200"
+            >
+              Privacy Policy
+            </Link>
+            <span className="hidden md:inline text-muted-foreground">•</span>
+            <Link 
+              href="/terms" 
+              className="text-xs text-muted-foreground hover:text-primary transition-colors duration-200"
+            >
+              Terms of Service
+            </Link>
+          </div>
+        </div>
+
         {/* Additional Info */}
-        <div className="mt-8 pt-6 border-t border-border text-center">
+        <div className="mt-4 text-center">
           <p className="text-xs text-muted-foreground">
             Flyin.to is a work in progress. Join the waitlist if you're interested in what we're building!
           </p>

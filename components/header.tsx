@@ -18,7 +18,7 @@ export const Header = () => {
           <Link href="/auth/sign-up">
             <Button size="lg" className="text-lg px-6 shadow-lg">
               <Plane className="mr-2 h-5 w-5" />
-              Join the Waitlist
+              Try our beta
             </Button>
           </Link>
         </div>
