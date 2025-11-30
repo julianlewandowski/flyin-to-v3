@@ -1,12 +1,20 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Loader2, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
-export default function UnifiedFlightSearchButton({ holidayId }: { holidayId: string }) {
+export default function UnifiedFlightSearchButton({ 
+  holidayId, 
+  hasExistingFlights = false 
+}: { 
+  holidayId: string
+  hasExistingFlights?: boolean 
+}) {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
@@ -49,6 +57,14 @@ export default function UnifiedFlightSearchButton({ holidayId }: { holidayId: st
         metadata: data.metadata,
         debug: data.debug,
       })
+
+      // If search was successful and flights were saved, refresh the page to show them
+      if (res.ok && data.success && data.metadata?.saved_to_db > 0) {
+        // Wait a moment for the database to be ready, then refresh
+        setTimeout(() => {
+          router.refresh()
+        }, 1000)
+      }
     } catch (err) {
       console.error("[Unified Search Button] Unexpected error:", err)
       setError(err instanceof Error ? err.message : "An unexpected error occurred")
@@ -68,7 +84,7 @@ export default function UnifiedFlightSearchButton({ holidayId }: { holidayId: st
         ) : (
           <>
             <Sparkles className="h-4 w-4 mr-2" />
-            AI Unified Flight Search
+            {hasExistingFlights ? "Re-search Flights" : "AI Unified Flight Search"}
           </>
         )}
       </Button>

@@ -9,12 +9,128 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { searchFlightsParallel, generateSearchParams } from "@/lib/serpapi"
+import type { SerpApiFlightSearchParams } from "@/lib/types"
 import { normalizeSerpApiResponse, normalizeFlightOffers } from "@/lib/normalize-flights"
 import { extractPreferences } from "@/lib/llm-preferences"
 import { scoreFlightOffers } from "@/lib/llm-scorer"
+import { recommendDates } from "@/lib/llm-date-recommender"
 import type { Holiday } from "@/lib/types"
 
 const DEV_BYPASS_AUTH = process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === "1"
+
+/**
+ * Generate search parameters using LLM-recommended dates
+ */
+function generateSearchParamsWithDates(
+  holiday: Holiday,
+  dateRecommendations: Array<{ outbound_date: string; return_date: string; reasoning: string; priority: number }>
+): SerpApiFlightSearchParams[] {
+  const params: SerpApiFlightSearchParams[] = []
+  
+  // Collect origins
+  const origins: string[] = []
+  if (holiday.origins && holiday.origins.length > 0) {
+    origins.push(...holiday.origins.filter((o) => o && o.trim()))
+  } else if (holiday.origin && holiday.origin.trim()) {
+    origins.push(holiday.origin.trim())
+  }
+
+  if (origins.length === 0) {
+    throw new Error("No origins found in holiday data")
+  }
+
+  // Collect destinations
+  const destinations = holiday.destinations || []
+  if (destinations.length === 0) {
+    throw new Error("No destinations found in holiday data")
+  }
+
+  // Generate search params for each origin-destination-date combination
+  for (const origin of origins) {
+    for (const destination of destinations) {
+      for (const dateRec of dateRecommendations) {
+        params.push({
+          engine: "google_flights",
+          departure_id: origin.trim(),
+          arrival_id: destination.trim(),
+          outbound_date: dateRec.outbound_date,
+          return_date: dateRec.return_date,
+          currency: "EUR",
+          adults: 1,
+          sort_by: 1, // Top flights
+          num: 50,
+        })
+      }
+    }
+  }
+
+  console.log(`[generateSearchParamsWithDates] Generated ${params.length} search params from ${dateRecommendations.length} date recommendations`)
+  console.log(`[generateSearchParamsWithDates] Breakdown: ${origins.length} origins × ${destinations.length} destinations × ${dateRecommendations.length} dates`)
+  return params
+}
+
+/**
+ * Manual date fallback - generates dates across the range
+ */
+function generateManualDateFallback(holiday: Holiday): Array<{ outbound_date: string; return_date: string; reasoning: string; priority: number }> {
+  const recommendations: Array<{ outbound_date: string; return_date: string; reasoning: string; priority: number }> = []
+  const startDate = new Date(holiday.start_date)
+  const endDate = new Date(holiday.end_date)
+  const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+  
+  // Generate 8-10 date combinations across the range
+  const numRecommendations = Math.min(10, Math.max(5, Math.floor(daysDiff / 7)))
+  const minDuration = holiday.trip_duration_min || 3
+  const maxDuration = holiday.trip_duration_max || 14
+  const avgDuration = Math.floor((minDuration + maxDuration) / 2)
+  
+  for (let i = 0; i < numRecommendations; i++) {
+    const progress = i / (numRecommendations - 1 || 1)
+    const outboundDaysFromStart = Math.floor(daysDiff * progress * 0.7) // Use first 70% of range
+    
+    const outboundDate = new Date(startDate)
+    outboundDate.setDate(outboundDate.getDate() + outboundDaysFromStart)
+    
+    // Prefer mid-week (Tuesday-Thursday = days 2-4)
+    const currentWeekday = outboundDate.getDay()
+    if (currentWeekday === 0 || currentWeekday === 6) {
+      // If weekend, move to Tuesday
+      const daysToTuesday = (2 - currentWeekday + 7) % 7
+      outboundDate.setDate(outboundDate.getDate() + daysToTuesday)
+    }
+    
+    const returnDate = new Date(outboundDate)
+    returnDate.setDate(returnDate.getDate() + avgDuration)
+    
+    // Ensure dates are within range
+    if (returnDate > endDate) {
+      returnDate.setTime(endDate.getTime())
+      const newOutbound = new Date(returnDate)
+      newOutbound.setDate(newOutbound.getDate() - avgDuration)
+      if (newOutbound >= startDate) {
+        outboundDate.setTime(newOutbound.getTime())
+      } else {
+        continue // Skip this combination
+      }
+    }
+    
+    const outboundStr = outboundDate.toISOString().split("T")[0]
+    const returnStr = returnDate.toISOString().split("T")[0]
+    
+    if (outboundStr < holiday.start_date || returnStr > holiday.end_date || returnStr <= outboundStr) {
+      continue
+    }
+    
+    recommendations.push({
+      outbound_date: outboundStr,
+      return_date: returnStr,
+      reasoning: `Generated date combination ${i + 1} of ${numRecommendations}`,
+      priority: 10 - i,
+    })
+  }
+  
+  return recommendations
+}
 
 export async function POST(
   request: NextRequest,
@@ -159,14 +275,81 @@ export async function POST(
     }
 
     // ========================================================================
-    // STEP 2: Generate Search Parameters
+    // STEP 2: Get Date Recommendations from LLM
     // ========================================================================
-    console.log("[Unified Search] STEP 2: Generating search parameters...")
+    console.log("[Unified Search] STEP 2: Getting date recommendations from LLM...")
+    let dateRecommendations: Array<{ outbound_date: string; return_date: string; reasoning: string; priority: number }> = []
+    
+    try {
+      dateRecommendations = await recommendDates({
+        origin: holidayData.origin || holidayData.origins?.[0] || "",
+        destinations: holidayData.destinations || [],
+        start_date: holidayData.start_date,
+        end_date: holidayData.end_date,
+        budget: holidayData.budget,
+        trip_duration_min: holidayData.trip_duration_min,
+        trip_duration_max: holidayData.trip_duration_max,
+        preferred_weekdays: holidayData.preferred_weekdays,
+      })
+      console.log("[Unified Search] LLM recommended", dateRecommendations.length, "date combinations")
+      if (dateRecommendations.length > 0) {
+        console.log("[Unified Search] Sample recommendations:", dateRecommendations.slice(0, 3).map(d => `${d.outbound_date} -> ${d.return_date}`))
+      }
+    } catch (error) {
+      console.error("[Unified Search] Error getting date recommendations:", error)
+      // Fallback will generate dates automatically
+      console.log("[Unified Search] Will use fallback date generation")
+    }
+    
+    // If no recommendations, generate fallback dates
+    if (dateRecommendations.length === 0) {
+      console.log("[Unified Search] No date recommendations, generating fallback dates...")
+      const { recommendDates } = await import("@/lib/llm-date-recommender")
+      try {
+        dateRecommendations = await recommendDates({
+          origin: holidayData.origin || holidayData.origins?.[0] || "",
+          destinations: holidayData.destinations || [],
+          start_date: holidayData.start_date,
+          end_date: holidayData.end_date,
+          budget: holidayData.budget,
+          trip_duration_min: holidayData.trip_duration_min,
+          trip_duration_max: holidayData.trip_duration_max,
+          preferred_weekdays: holidayData.preferred_weekdays,
+        })
+        // If still empty, the fallback function inside recommendDates should have generated dates
+        // But if it's still empty, we'll generate them manually
+        if (dateRecommendations.length === 0) {
+          dateRecommendations = generateManualDateFallback(holidayData)
+        }
+      } catch (fallbackError) {
+        console.error("[Unified Search] Fallback also failed, generating dates manually:", fallbackError)
+        dateRecommendations = generateManualDateFallback(holidayData)
+      }
+      console.log("[Unified Search] Generated", dateRecommendations.length, "date combinations (fallback)")
+    }
+
+    // ========================================================================
+    // STEP 3: Generate Search Parameters (using recommended dates)
+    // ========================================================================
+    console.log("[Unified Search] STEP 3: Generating search parameters...")
     let searchParamsArray: ReturnType<typeof generateSearchParams>
 
     try {
-      searchParamsArray = generateSearchParams(holidayData)
-      console.log("[Unified Search] Generated", searchParamsArray.length, "search parameter sets")
+      // Always use date recommendations if we have them, otherwise generate fallback dates
+      if (dateRecommendations.length > 0) {
+        // Generate search params for each recommended date combination
+        searchParamsArray = generateSearchParamsWithDates(holidayData, dateRecommendations)
+        console.log("[Unified Search] Generated", searchParamsArray.length, "search parameter sets using", dateRecommendations.length, "recommended dates")
+        console.log("[Unified Search] Date range covered:", {
+          earliest: dateRecommendations.map(d => d.outbound_date).sort()[0],
+          latest: dateRecommendations.map(d => d.return_date).sort().reverse()[0],
+        })
+      } else {
+        // This should not happen as we generate fallback dates above, but just in case
+        console.warn("[Unified Search] No date recommendations available, using single date fallback")
+        searchParamsArray = generateSearchParams(holidayData)
+        console.log("[Unified Search] Generated", searchParamsArray.length, "search parameter sets (single date fallback)")
+      }
     } catch (error) {
       console.error("[Unified Search] Error generating search params:", error)
       const errorMessage = error instanceof Error ? error.message : "Failed to generate search parameters"
@@ -228,9 +411,9 @@ export async function POST(
     }
 
     // ========================================================================
-    // STEP 3: Retrieval Layer - SerpApi
+    // STEP 4: Retrieval Layer - SerpApi
     // ========================================================================
-    console.log("[Unified Search] STEP 3: Searching SerpApi with", searchParamsArray.length, "parameter sets...")
+    console.log("[Unified Search] STEP 4: Searching SerpApi with", searchParamsArray.length, "parameter sets...")
     
     let searchResults
     try {
@@ -313,14 +496,40 @@ export async function POST(
     }
 
     // ========================================================================
-    // STEP 4: Normalization
+    // STEP 5: Normalization
     // ========================================================================
-    console.log("[Unified Search] STEP 4: Normalizing results...")
+    console.log("[Unified Search] STEP 5: Normalizing results...")
     console.log("[Unified Search] Sample raw result structure:", allRawResults.length > 0 ? JSON.stringify(allRawResults[0], null, 2).substring(0, 1500) : "No results")
     
     // Get currency from search params (should be consistent across all searches)
     const requestCurrency = searchParamsArray[0]?.currency || "EUR"
-    const normalizedOffers = normalizeFlightOffers(allRawResults, "serpapi", requestCurrency)
+    let normalizedOffers = normalizeFlightOffers(allRawResults, "serpapi", requestCurrency)
+    
+    // Filter out flights that don't match trip duration requirements
+    if (holidayData.trip_duration_min || holidayData.trip_duration_max) {
+      const minDuration = holidayData.trip_duration_min || 0
+      const maxDuration = holidayData.trip_duration_max || 999
+      
+      const beforeFilter = normalizedOffers.length
+      normalizedOffers = normalizedOffers.filter((offer) => {
+        // Calculate trip duration from first departure to last arrival
+        if (offer.segments.length === 0) return false
+        
+        const firstDeparture = new Date(offer.segments[0].departure)
+        const lastArrival = new Date(offer.segments[offer.segments.length - 1].arrival)
+        const tripDurationDays = Math.ceil((lastArrival.getTime() - firstDeparture.getTime()) / (1000 * 60 * 60 * 24))
+        
+        const matches = tripDurationDays >= minDuration && tripDurationDays <= maxDuration
+        
+        if (!matches) {
+          console.log(`[Unified Search] Filtered out flight: trip duration ${tripDurationDays} days (required: ${minDuration}-${maxDuration})`)
+        }
+        
+        return matches
+      })
+      
+      console.log(`[Unified Search] Filtered ${beforeFilter - normalizedOffers.length} flights that didn't match trip duration (${minDuration}-${maxDuration} days)`)
+    }
 
     console.log(
       `[Unified Search] Normalized ${normalizedOffers.length} offers from ${allRawResults.length} raw results`
@@ -382,9 +591,9 @@ export async function POST(
     }
 
     // ========================================================================
-    // STEP 5: LLM Scoring
+    // STEP 6: LLM Scoring
     // ========================================================================
-    console.log("[Unified Search] STEP 5: Scoring offers with LLM...")
+    console.log("[Unified Search] STEP 6: Scoring offers with LLM...")
 
     const maxOffersToScore = 20
     const offersToScore = normalizedOffers.slice(0, maxOffersToScore)
@@ -411,6 +620,81 @@ export async function POST(
     console.log(
       `[Unified Search] Completed in ${duration}ms: Returning top ${topOffers.length} offers`
     )
+
+    // ========================================================================
+    // STEP 7: Save flights to database
+    // ========================================================================
+    console.log("[Unified Search] STEP 7: Saving flights to database...")
+    
+    // Delete old flights for this holiday first
+    await supabase.from("flights").delete().eq("holiday_id", id)
+    
+    // Save new flights - only save flights that match trip duration
+    const flightsToSave = topOffers
+      .filter((offer) => {
+        // Double-check trip duration before saving
+        if (holidayData.trip_duration_min || holidayData.trip_duration_max) {
+          const minDuration = holidayData.trip_duration_min || 0
+          const maxDuration = holidayData.trip_duration_max || 999
+          
+          if (offer.segments.length === 0) return false
+          
+          const firstDeparture = new Date(offer.segments[0].departure)
+          const lastArrival = new Date(offer.segments[offer.segments.length - 1].arrival)
+          const tripDurationDays = Math.ceil((lastArrival.getTime() - firstDeparture.getTime()) / (1000 * 60 * 60 * 24))
+          
+          return tripDurationDays >= minDuration && tripDurationDays <= maxDuration
+        }
+        return true
+      })
+      .map((offer) => {
+        // Get first and last segments for dates
+        const firstSegment = offer.segments[0]
+        const lastSegment = offer.segments[offer.segments.length - 1]
+        
+        // Extract dates from segments
+        const departureDate = firstSegment?.departure ? new Date(firstSegment.departure).toISOString().split("T")[0] : null
+        const returnDate = lastSegment?.arrival ? new Date(lastSegment.arrival).toISOString().split("T")[0] : null
+        
+        // Get origin and destination from segments
+        const origin = firstSegment?.from?.code || holidayData.origin || ""
+        const destination = lastSegment?.to?.code || (holidayData.destinations?.[0] || "")
+        
+        // Get airline from first segment
+        const airline = firstSegment?.airline?.name || "Unknown"
+        
+        return {
+          holiday_id: id,
+          origin,
+          destination,
+          departure_date: departureDate || holidayData.start_date,
+          return_date: returnDate || holidayData.end_date,
+          price: offer.price.total,
+          airline,
+          booking_link: offer.booking_link || null,
+          last_checked: new Date().toISOString(),
+        }
+      })
+      .filter(f => f.departure_date && f.return_date) // Only save flights with valid dates
+
+    if (flightsToSave.length > 0) {
+      const { error: saveError } = await supabase
+        .from("flights")
+        .insert(flightsToSave)
+      
+      if (saveError) {
+        console.error("[Unified Search] Error saving flights:", saveError)
+      } else {
+        console.log(`[Unified Search] Saved ${flightsToSave.length} flights to database`)
+      }
+    }
+
+    // Update holiday with last search timestamp
+    await supabase
+      .from("holidays")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", id)
+
     console.log("[Unified Search] ========================================")
 
     // ========================================================================
@@ -426,6 +710,7 @@ export async function POST(
         total_normalized: normalizedOffers.length,
         total_scored: scoredOffers.length,
         search_errors: errors.length > 0 ? errors : undefined,
+        saved_to_db: flightsToSave.length,
       },
       debug: {
         search_params_count: searchParamsArray.length,

@@ -12,6 +12,21 @@ import AiScoutButton from "@/components/ai-scout-button"
 import VerifyFlightsButton from "@/components/verify-flights-button"
 import UnifiedFlightSearchButton from "@/components/unified-flight-search-button"
 
+function getTimeAgo(dateString: string): string {
+  if (!dateString) return "Never"
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+  
+  if (diffMins < 1) return "Just now"
+  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`
+  return date.toLocaleDateString()
+}
 
 export default async function HolidayDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -38,6 +53,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
     .from("flights")
     .select("*")
     .eq("holiday_id", id)
+    .order("last_checked", { ascending: false })
     .order("price", { ascending: true })
 
   // Fetch AI insights
@@ -220,9 +236,16 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
           {/* Flights Section */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">Flight Options</h2>
+              <div>
+                <h2 className="text-2xl font-bold">Flight Options</h2>
+                {flightData.length > 0 && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Last searched: {getTimeAgo(flightData[0]?.last_checked || flightData[0]?.created_at || "")}
+                  </p>
+                )}
+              </div>
               <div className="flex items-center gap-3">
-                <UnifiedFlightSearchButton holidayId={id} />
+                <UnifiedFlightSearchButton holidayId={id} hasExistingFlights={flightData.length > 0} />
                 {flightData.length > 0 && hasAiResults && <VerifyFlightsButton holidayId={id} variant="outline" />}
               </div>
             </div>
