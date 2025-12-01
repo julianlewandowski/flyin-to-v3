@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { X, Sparkles } from "lucide-react"
+import { AirportAutocomplete } from "@/components/airport-autocomplete"
 
 interface CreateHolidayFormProps {
   userId: string
@@ -115,7 +116,39 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
 
       if (insertError) throw insertError
 
+      // Automatically trigger unified flight search and insights generation
+      try {
+        // Step 1: Trigger unified flight search (await to ensure it completes)
+        const searchResponse = await fetch(`/api/holidays/${data.id}/search-flights-unified`, {
+          method: "POST",
+        })
+        
+        const searchData = await searchResponse.json()
+        console.log("[Create Holiday] Auto-search response:", searchData)
+        
+        if (searchResponse.ok && searchData.success && searchData.metadata?.saved_to_db > 0) {
+          // Step 2: Wait a moment for flights to be saved, then generate insights
+          await new Promise((resolve) => setTimeout(resolve, 2000))
+          
+          // Step 3: Generate insights (only if flights were found)
+          try {
+            await fetch(`/api/holidays/${data.id}/generate-insights`, {
+              method: "POST",
+            })
+          } catch (insightsError) {
+            // Insights generation is optional, don't fail the whole flow
+            console.warn("Failed to generate insights automatically:", insightsError)
+          }
+        }
+      } catch (autoSearchError) {
+        // Auto-search is best-effort, don't fail the holiday creation
+        // User can manually trigger search from the dashboard if needed
+        console.warn("Failed to automatically search flights:", autoSearchError)
+      }
+
+      // Redirect to dashboard - results should be ready
       router.push(`/dashboard/holidays/${data.id}`)
+      router.refresh()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create holiday")
       setIsLoading(false)
@@ -145,11 +178,11 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
             <Label>Origin Airports</Label>
             {origins.map((origin, index) => (
               <div key={index} className="flex gap-2">
-                <Input
-                  placeholder="e.g., JFK, LHR, SYD"
+                <AirportAutocomplete
                   value={origin}
-                  onChange={(e) => updateOrigin(index, e.target.value)}
-                  required
+                  onChange={(value) => updateOrigin(index, value)}
+                  placeholder="Search origin airport..."
+                  className="flex-1"
                 />
                 {origins.length > 1 && (
                   <Button type="button" variant="outline" size="icon" onClick={() => removeOrigin(index)}>
@@ -182,11 +215,11 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
               <Label>Destination Airports</Label>
               {destinations.map((destination, index) => (
                 <div key={index} className="flex gap-2">
-                  <Input
-                    placeholder="e.g., CDG, FCO, BCN"
+                  <AirportAutocomplete
                     value={destination}
-                    onChange={(e) => updateDestination(index, e.target.value)}
-                    required
+                    onChange={(value) => updateDestination(index, value)}
+                    placeholder="Search destination airport..."
+                    className="flex-1"
                   />
                   {destinations.length > 1 && (
                     <Button type="button" variant="outline" size="icon" onClick={() => removeDestination(index)}>
@@ -294,12 +327,24 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
 
           <div className="flex gap-4">
             <Button type="submit" disabled={isLoading} className="flex-1">
-              {isLoading ? "Creating..." : "Create Holiday"}
+              {isLoading ? (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2 animate-pulse" />
+                  Creating holiday and searching flights...
+                </>
+              ) : (
+                "Create Holiday"
+              )}
             </Button>
             <Button type="button" variant="outline" onClick={() => router.push("/dashboard")} disabled={isLoading}>
               Cancel
             </Button>
           </div>
+          {isLoading && (
+            <p className="text-sm text-muted-foreground text-center">
+              This may take a moment while we search for flights and generate insights...
+            </p>
+          )}
         </form>
       </CardContent>
     </Card>

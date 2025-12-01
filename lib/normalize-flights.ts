@@ -141,7 +141,10 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
     }
 
     if (!total || total === 0) {
-      console.warn("[Normalize] Skipping offer without valid price. Price value:", serpResult.price)
+      console.warn("[Normalize] Skipping offer without valid price.")
+      console.warn("[Normalize] Price value:", serpResult.price)
+      console.warn("[Normalize] Price type:", typeof serpResult.price)
+      console.warn("[Normalize] Full result keys:", Object.keys(serpResult))
       return null // Skip offers without valid pricing
     }
 
@@ -150,7 +153,15 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
     const segments: FlightSegment[] = []
 
     if (!Array.isArray(segmentsRaw)) {
-      console.warn("[Normalize] Segments is not an array:", typeof segmentsRaw, segmentsRaw)
+      console.warn("[Normalize] Segments is not an array:", typeof segmentsRaw)
+      console.warn("[Normalize] Segments value:", segmentsRaw)
+      console.warn("[Normalize] Available keys:", Object.keys(serpResult))
+      return null
+    }
+
+    if (segmentsRaw.length === 0) {
+      console.warn("[Normalize] Empty segments array")
+      console.warn("[Normalize] Full result structure:", JSON.stringify(serpResult, null, 2).substring(0, 1000))
       return null
     }
 
@@ -159,12 +170,15 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
       if (parsed) {
         segments.push(parsed)
       } else {
-        console.warn("[Normalize] Failed to parse segment:", seg)
+        console.warn("[Normalize] Failed to parse segment")
+        console.warn("[Normalize] Segment structure:", JSON.stringify(seg, null, 2).substring(0, 500))
       }
     }
 
     if (segments.length === 0) {
-      console.warn("[Normalize] No valid segments found. Raw segments:", segmentsRaw.length)
+      console.warn("[Normalize] No valid segments found after parsing")
+      console.warn("[Normalize] Raw segments count:", segmentsRaw.length)
+      console.warn("[Normalize] First segment sample:", JSON.stringify(segmentsRaw[0], null, 2).substring(0, 500))
       return null // Skip if no valid segments
     }
 
@@ -247,12 +261,28 @@ export function normalizeFlightOffers(serpResults: any[], provider: string = "se
   for (let i = 0; i < serpResults.length; i++) {
     const result = serpResults[i]
     console.log(`[Normalize] Processing result ${i + 1}/${serpResults.length}`)
+    console.log(`[Normalize] Result ${i + 1} structure:`, {
+      hasFlights: !!result.flights,
+      flightsLength: Array.isArray(result.flights) ? result.flights.length : 'not array',
+      hasPrice: !!result.price,
+      priceValue: result.price,
+      keys: Object.keys(result),
+    })
+    
+    // Log first result in detail for debugging
+    if (i === 0) {
+      console.log(`[Normalize] First result full structure:`, JSON.stringify(result, null, 2).substring(0, 2000))
+    }
+    
     const offer = normalizeFlightOffer(result, provider, defaultCurrency)
     if (offer) {
       offers.push(offer)
       console.log(`[Normalize] Successfully normalized offer ${i + 1}: ${offer.segments.length} segments, price: ${offer.price.total} ${offer.price.currency}`)
     } else {
-      console.warn(`[Normalize] Failed to normalize result ${i + 1}. Keys:`, Object.keys(result))
+      console.warn(`[Normalize] Failed to normalize result ${i + 1}`)
+      console.warn(`[Normalize] Result keys:`, Object.keys(result))
+      console.warn(`[Normalize] Result.flights:`, result.flights)
+      console.warn(`[Normalize] Result.price:`, result.price)
     }
   }
 

@@ -14,6 +14,7 @@ import { normalizeSerpApiResponse, normalizeFlightOffers } from "@/lib/normalize
 import { extractPreferences } from "@/lib/llm-preferences"
 import { scoreFlightOffers } from "@/lib/llm-scorer"
 import { recommendDates } from "@/lib/llm-date-recommender"
+import { expandCityAirport } from "@/lib/airports"
 import type { Holiday } from "@/lib/types"
 
 const DEV_BYPASS_AUTH = process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === "1"
@@ -27,22 +28,32 @@ function generateSearchParamsWithDates(
 ): SerpApiFlightSearchParams[] {
   const params: SerpApiFlightSearchParams[] = []
   
-  // Collect origins
+  // Collect origins and expand city-level codes
   const origins: string[] = []
   if (holiday.origins && holiday.origins.length > 0) {
-    origins.push(...holiday.origins.filter((o) => o && o.trim()))
+    for (const origin of holiday.origins.filter((o) => o && o.trim())) {
+      const expanded = expandCityAirport(origin.trim())
+      origins.push(...expanded)
+    }
   } else if (holiday.origin && holiday.origin.trim()) {
-    origins.push(holiday.origin.trim())
+    const expanded = expandCityAirport(holiday.origin.trim())
+    origins.push(...expanded)
   }
 
   if (origins.length === 0) {
     throw new Error("No origins found in holiday data")
   }
 
-  // Collect destinations
-  const destinations = holiday.destinations || []
-  if (destinations.length === 0) {
+  // Collect destinations and expand city-level codes
+  const destinationCodes = holiday.destinations || []
+  if (destinationCodes.length === 0) {
     throw new Error("No destinations found in holiday data")
+  }
+
+  const destinations: string[] = []
+  for (const dest of destinationCodes) {
+    const expanded = expandCityAirport(dest.trim())
+    destinations.push(...expanded)
   }
 
   // Generate search params for each origin-destination-date combination
@@ -66,6 +77,8 @@ function generateSearchParamsWithDates(
 
   console.log(`[generateSearchParamsWithDates] Generated ${params.length} search params from ${dateRecommendations.length} date recommendations`)
   console.log(`[generateSearchParamsWithDates] Breakdown: ${origins.length} origins × ${destinations.length} destinations × ${dateRecommendations.length} dates`)
+  console.log(`[generateSearchParamsWithDates] Expanded origins: ${origins.join(", ")}`)
+  console.log(`[generateSearchParamsWithDates] Expanded destinations: ${destinations.join(", ")}`)
   return params
 }
 
