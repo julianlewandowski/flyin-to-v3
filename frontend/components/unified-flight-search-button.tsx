@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { createClient } from "@/lib/supabase/client"
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
 
 export default function UnifiedFlightSearchButton({ 
   holidayId, 
@@ -27,8 +30,20 @@ export default function UnifiedFlightSearchButton({
     console.log("[Unified Search Button] Starting search for holiday:", holidayId)
     
     try {
-      const res = await fetch(`/api/holidays/${holidayId}/search-flights-unified`, {
+      // Get auth token from Supabase
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      }
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`
+      }
+
+      const res = await fetch(`${BACKEND_URL}/holidays/${holidayId}/search-flights-unified`, {
         method: "POST",
+        headers,
       })
 
       const data = await res.json()

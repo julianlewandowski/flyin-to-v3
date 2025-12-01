@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, Calendar, MapPin, DollarSign, Plane } from "lucide-react"
 import Link from "next/link"
 import type { Holiday } from "@/lib/types"
+import { fetchHolidaysForCurrentUser } from "@/lib/backend"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -18,13 +19,14 @@ export default async function DashboardPage() {
     redirect("/auth/login")
   }
 
-  // Fetch user's holidays
-  const { data: holidays, error: holidaysError } = await supabase
-    .from("holidays")
-    .select("*")
-    .order("created_at", { ascending: false })
+  let userHolidays: Holiday[] = []
+  let holidaysError: Error | null = null
 
-  const userHolidays = (holidays as Holiday[]) || []
+  try {
+    userHolidays = await fetchHolidaysForCurrentUser()
+  } catch (err) {
+    holidaysError = err as Error
+  }
 
   return (
     <div className="min-h-screen bg-background">

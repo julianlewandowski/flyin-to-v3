@@ -4,6 +4,9 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sparkles } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
 
 interface AiScoutButtonProps {
   holidayId: string
@@ -16,8 +19,20 @@ export default function AiScoutButton({ holidayId }: AiScoutButtonProps) {
   const handleScout = async () => {
     setIsLoading(true)
     try {
-      const response = await fetch(`/api/holidays/${holidayId}/ai-scout`, {
+      // Get auth token from Supabase
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      }
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`
+      }
+
+      const response = await fetch(`${BACKEND_URL}/holidays/${holidayId}/ai-scout`, {
         method: "POST",
+        headers,
       })
 
       if (!response.ok) {

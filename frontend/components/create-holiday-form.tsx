@@ -13,6 +13,8 @@ import { Switch } from "@/components/ui/switch"
 import { X, Sparkles } from "lucide-react"
 import { AirportAutocomplete } from "@/components/airport-autocomplete"
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
+
 interface CreateHolidayFormProps {
   userId: string
 }
@@ -118,9 +120,19 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
 
       // Automatically trigger unified flight search and insights generation
       try {
+        // Get auth token for backend calls
+        const { data: { session } } = await supabase.auth.getSession()
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        }
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`
+        }
+
         // Step 1: Trigger unified flight search (await to ensure it completes)
-        const searchResponse = await fetch(`/api/holidays/${data.id}/search-flights-unified`, {
+        const searchResponse = await fetch(`${BACKEND_URL}/holidays/${data.id}/search-flights-unified`, {
           method: "POST",
+          headers,
         })
         
         const searchData = await searchResponse.json()
@@ -132,8 +144,9 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
           
           // Step 3: Generate insights (only if flights were found)
           try {
-            await fetch(`/api/holidays/${data.id}/generate-insights`, {
+            await fetch(`${BACKEND_URL}/holidays/${data.id}/generate-insights`, {
               method: "POST",
+              headers,
             })
           } catch (insightsError) {
             // Insights generation is optional, don't fail the whole flow
