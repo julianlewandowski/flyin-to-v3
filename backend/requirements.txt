@@ -7,3 +7,4 @@ greenlet
 pydantic-settings
 httpx
 python-dotenv
+supabase
