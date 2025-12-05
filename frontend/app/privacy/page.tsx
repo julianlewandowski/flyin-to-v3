@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-100">
       <div className="container mx-auto px-6 py-12 max-w-4xl">
         <Link href="/">
           <Button variant="ghost" className="mb-8">
@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
           </Button>
         </Link>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 md:p-12">
+        <div className="bg-gray-200 rounded-sm shadow-sm border border-gray-300 p-8 md:p-12">
           <h1 className="text-4xl font-bold mb-2 text-gray-900">Privacy Policy</h1>
           <p className="text-sm text-gray-500 mb-8">Last Updated: 30th of November, 2025</p>
 

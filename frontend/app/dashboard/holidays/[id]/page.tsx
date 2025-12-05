@@ -2,7 +2,8 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Calendar, MapPin, DollarSign, Plane, TrendingDown, Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft, Calendar, MapPin, DollarSign, Plane, TrendingDown, Sparkles, Edit } from "lucide-react"
 import Link from "next/link"
 import type { Holiday, Flight, AIInsight, Alert } from "@/lib/types"
 import HolidayHeader from "@/components/holiday-header"
@@ -81,7 +82,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
   const hasAiResults = holidayData.ai_discovery_results && holidayData.ai_discovery_results.length > 0
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-100">
       <HolidayHeader userEmail={user.email || ""} />
 
       {/* Auto-trigger flight search if needed - disabled by default to prevent errors */}
@@ -93,9 +94,9 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
       />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-6 pt-24 pb-16">
         <Link href="/dashboard">
-          <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors">
+          <button className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 mb-8 transition-colors duration-300">
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </button>
@@ -106,61 +107,69 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
-                <CardTitle className="text-3xl">{holidayData.name}</CardTitle>
-                <CardDescription>Created on {new Date(holidayData.created_at).toLocaleDateString()}</CardDescription>
+                <CardTitle className="text-3xl md:text-4xl font-bold text-gray-900">{holidayData.name}</CardTitle>
+                <CardDescription className="text-gray-600 mt-2">Created on {new Date(holidayData.created_at).toLocaleDateString()}</CardDescription>
               </div>
-              {holidayData.use_ai_discovery && (
-                <Badge variant="secondary" className="flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  AI Discovery
-                </Badge>
-              )}
+              <div className="flex items-center gap-3">
+                {holidayData.use_ai_discovery && (
+                  <Badge variant="secondary" className="flex items-center gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20">
+                    <Sparkles className="h-3 w-3" />
+                    AI Discovery
+                  </Badge>
+                )}
+                <Link href={`/dashboard/holidays/${id}/edit`}>
+                  <Button variant="outline" size="sm" className="flex items-center gap-2">
+                    <Edit className="h-4 w-4" />
+                    Edit
+                  </Button>
+                </Link>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                   <MapPin className="h-4 w-4" />
                   {holidayData.origins && holidayData.origins.length > 1 ? "Origins" : "Origin"}
                 </div>
-                <p className="font-semibold text-lg">
+                <p className="font-bold text-lg text-gray-900">
                   {holidayData.origins ? holidayData.origins.join(", ") : holidayData.origin}
                 </p>
               </div>
               <div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                   <MapPin className="h-4 w-4" />
                   Destinations
                 </div>
-                <p className="font-semibold text-lg">
+                <p className="font-bold text-lg text-gray-900">
                   {holidayData.use_ai_discovery && holidayData.destinations.length === 0
                     ? "Flexible (AI)"
                     : holidayData.destinations.join(", ")}
                 </p>
               </div>
               <div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                   <Calendar className="h-4 w-4" />
                   Travel Dates
                 </div>
-                <p className="font-semibold">
+                <p className="font-bold text-gray-900">
                   {new Date(holidayData.start_date).toLocaleDateString()} -{" "}
                   {new Date(holidayData.end_date).toLocaleDateString()}
                 </p>
                 {holidayData.trip_duration_min && holidayData.trip_duration_max && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-gray-600 mt-1">
                     {holidayData.trip_duration_min}-{holidayData.trip_duration_max} days
                   </p>
                 )}
               </div>
               {holidayData.budget && (
                 <div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                     <DollarSign className="h-4 w-4" />
                     Budget
                   </div>
-                  <p className="font-semibold text-lg">€{holidayData.budget.toLocaleString()}</p>
+                  <p className="font-bold text-lg text-gray-900">€{holidayData.budget.toLocaleString()}</p>
                 </div>
               )}
             </div>
@@ -168,16 +177,16 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         </Card>
 
         {needsAiScan && (
-          <Card className="mb-8 border-primary/50 bg-primary/5">
+          <Card className="mb-8 border-blue-500/50 bg-blue-500/5">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Sparkles className="h-5 w-5 text-primary" />
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-sm bg-blue-500 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">AI Route Discovery Ready</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-bold text-gray-900 text-lg">AI Route Discovery Ready</h3>
+                    <p className="text-sm text-gray-700 mt-1">
                       Let AI scan the web for the best flight deals matching your criteria
                     </p>
                   </div>
@@ -189,20 +198,20 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         )}
 
         {hasAiResults && flightData.length === 0 && (
-          <Card className="mb-8 border-primary/50 bg-primary/5">
+          <Card className="mb-8 border-blue-500/50 bg-blue-500/5">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Plane className="h-5 w-5 text-primary" />
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-sm bg-blue-500 flex items-center justify-center flex-shrink-0">
+                    <Plane className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold">{holidayData.ai_discovery_results?.length} Routes Discovered</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <h3 className="font-bold text-gray-900 text-lg">{holidayData.ai_discovery_results?.length} Routes Discovered</h3>
+                    <p className="text-sm text-gray-700 mt-1">
                       Verify these routes with live flight data from Airhob
                     </p>
                     {holidayData.last_ai_scan && (
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-gray-600 mt-2">
                         Last scan: {new Date(holidayData.last_ai_scan).toLocaleString()}
                       </p>
                     )}
@@ -217,7 +226,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         {alertData.length > 0 && (
           <Card className="mb-8 border-orange-500/50 bg-orange-500/5">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="text-lg flex items-center gap-2 font-bold text-gray-900">
                 <TrendingDown className="h-5 w-5 text-orange-500" />
                 Recent Price Drops
               </CardTitle>
@@ -226,11 +235,11 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
               <div className="space-y-3">
                 {alertData.map((alert) => (
                   <div key={alert.id} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{new Date(alert.created_at).toLocaleDateString()}</span>
+                    <span className="text-gray-600">{new Date(alert.created_at).toLocaleDateString()}</span>
                     <div className="flex items-center gap-2">
-                      <span className="line-through text-muted-foreground">€{alert.old_price}</span>
-                      <span className="font-semibold text-orange-500">€{alert.new_price}</span>
-                      <Badge variant="secondary" className="text-orange-500">
+                      <span className="line-through text-gray-500">€{alert.old_price}</span>
+                      <span className="font-bold text-orange-600">€{alert.new_price}</span>
+                      <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
                         -{alert.price_drop_percent.toFixed(0)}%
                       </Badge>
                     </div>
@@ -244,16 +253,16 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Flights Section */}
           <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
               <div>
-                <h2 className="text-2xl font-bold">Flight Options</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Flight Options</h2>
                 {flightData.length > 0 && (
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-gray-600 mt-2">
                     Last searched: {getTimeAgo(flightData[0]?.last_checked || flightData[0]?.created_at || "")}
                   </p>
                 )}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <UnifiedFlightSearchButton 
                   holidayId={id} 
                   hasExistingFlights={flightData.length > 0}
@@ -264,13 +273,13 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
             </div>
 
             {flightData.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <Plane className="h-6 w-6 text-muted-foreground" />
+              <Card className="border-dashed border-gray-400 bg-gray-200/50">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <div className="h-16 w-16 rounded-sm bg-gray-300 flex items-center justify-center mb-4">
+                    <Plane className="h-8 w-8 text-gray-600" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No flights found yet</h3>
-                  <p className="text-muted-foreground text-center max-w-md mb-4">
+                  <h3 className="text-xl font-bold mb-2 text-gray-900">No flights found yet</h3>
+                  <p className="text-gray-700 text-center max-w-md leading-relaxed">
                     {needsAiScan
                       ? "Run AI discovery to find the best routes"
                       : hasAiResults
@@ -290,18 +299,18 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
 
           {/* AI Insights Section */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold">AI Insights</h2>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">AI Insights</h2>
               <GenerateInsightsButton holidayId={id} />
             </div>
 
             {insightData.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-8">
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
-                    <TrendingDown className="h-5 w-5 text-muted-foreground" />
+              <Card className="border-dashed border-gray-400 bg-gray-200/50">
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <div className="h-12 w-12 rounded-sm bg-gray-300 flex items-center justify-center mb-4">
+                    <TrendingDown className="h-6 w-6 text-gray-600" />
                   </div>
-                  <p className="text-sm text-muted-foreground text-center">
+                  <p className="text-sm text-gray-700 text-center leading-relaxed">
                     {flightData.length === 0
                       ? "AI insights will appear here once we have flight data"
                       : "Click 'Generate AI Insights' to get personalized recommendations"}
@@ -314,14 +323,14 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                   <Card key={insight.id}>
                     <CardHeader>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="capitalize">
+                        <Badge variant="secondary" className="capitalize bg-blue-500/10 text-blue-600 border-blue-500/20">
                           {insight.insight_type.replace("_", " ")}
                         </Badge>
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm leading-relaxed">{insight.insight_text}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
+                      <p className="text-sm leading-relaxed text-gray-700">{insight.insight_text}</p>
+                      <p className="text-xs text-gray-600 mt-3">
                         {new Date(insight.created_at).toLocaleDateString()}
                       </p>
                     </CardContent>

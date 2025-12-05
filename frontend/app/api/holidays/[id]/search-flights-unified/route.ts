@@ -16,6 +16,9 @@ import { scoreFlightOffers } from "@/lib/llm-scorer"
 import { optimizeFlightDates } from "@/lib/llm-date-optimizer"
 import { expandCityAirport } from "@/lib/airports"
 import type { Holiday } from "@/lib/types"
+import { generateCandidatesPerDestination } from "@/lib/anchor-date-generator"
+import { scoreCandidatesGlobally } from "@/lib/global-candidate-scorer"
+import { emitUserThought, type ThoughtStreamCallback } from "@/lib/ai-thought-stream"
 
 const DEV_BYPASS_AUTH = process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === "1"
 
@@ -347,11 +350,11 @@ export async function POST(
     }
 
     // ========================================================================
-    // STEP 2: Optimize Dates Using OpenAI (Phase 1 - Pre-filter to max 5 dates)
+    // STEP 2: Anchor-Based Date Generation + Global Scoring (NEW PIPELINE)
     // ========================================================================
-    console.log("[Unified Search] STEP 2: Optimizing dates with OpenAI (Phase 1)...")
+    console.log("[Unified Search] STEP 2: Anchor-based date generation per destination...")
     
-    // Collect origins
+    // Collect origins (use first origin for now, can expand to multiple later)
     const origins: string[] = []
     if (holidayData.origins && holidayData.origins.length > 0) {
       for (const origin of holidayData.origins.filter((o) => o && o.trim())) {
@@ -381,114 +384,226 @@ export async function POST(
       )
     }
 
-    // Use OpenAI to optimize dates - returns max 5 date pairs
-    let optimizedDatePairs: Array<{
+    // Collect AI thoughts for user feedback
+    const aiThoughts: string[] = []
+    const thoughtCallback: ThoughtStreamCallback = (thought: string) => {
+      aiThoughts.push(thought)
+      console.log(`[AI Thought] ${thought}`)
+    }
+
+    const tripLengthMin = holidayData.trip_duration_min || 3
+    const tripLengthMax = holidayData.trip_duration_max || 14
+    const primaryOrigin = origins[0] // Use first origin (can expand later)
+
+    // Declare variables at function scope for access in response
+    let allCandidates: Array<{
+      origin: string
+      destination: string
       depart_date: string
       return_date: string
-      estimated_price?: number
-      confidence: number
+      trip_length_days: number
+      anchor_type: "early" | "mid" | "late" | "random" | "random_cheap_weekday"
+    }> = []
+
+    let top5Candidates: Array<{
+      origin: string
+      destination: string
+      depart_date: string
+      return_date: string
+      score: number
       reasoning: string
     }> = []
 
+    // STEP 2a: Generate ~5 candidates PER DESTINATION using anchor-based strategy
+    emitUserThought(thoughtCallback, `Exploring date combinations for ${destinations.length} destination${destinations.length > 1 ? "s" : ""}...`)
+    
+    for (const destination of destinations) {
+      emitUserThought(thoughtCallback, `Exploring early ${new Date(holidayData.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} departure dates for ${destination}...`)
+      
+      const destinationCandidates = generateCandidatesPerDestination({
+        origin: primaryOrigin,
+        destination: destination,
+        earliest_departure: holidayData.start_date,
+        latest_return: holidayData.end_date,
+        min_length_days: tripLengthMin,
+        max_length_days: tripLengthMax,
+      })
+
+      console.log(`[Unified Search] Generated ${destinationCandidates.length} candidates for destination: ${destination}`)
+      allCandidates.push(...destinationCandidates)
+    }
+
+    console.log(`[Unified Search] Generated ${allCandidates.length} total candidates across all destinations`)
+    emitUserThought(
+      thoughtCallback,
+      `Generated ${allCandidates.length} date combinations across all destinations.`
+    )
+
+    emitUserThought(thoughtCallback, "Evaluating trip lengths between " + tripLengthMin + "-" + tripLengthMax + " days...")
+
+    // STEP 2b: Score ALL candidates globally using OpenAI (pattern-based, not price estimation)
+    emitUserThought(thoughtCallback, "Comparing all destinations to find the best date combinations...")
+    emitUserThought(thoughtCallback, "Checking which destinations look promising based on day-of-week patterns...")
+
     try {
-      optimizedDatePairs = await optimizeFlightDates({
+      top5Candidates = await scoreCandidatesGlobally({
+        candidates: allCandidates,
         origin_airports: origins,
         destination_airports: destinations,
-        start_date: holidayData.start_date,
-        end_date: holidayData.end_date,
-        trip_length_min: holidayData.trip_duration_min || 3,
-        trip_length_max: holidayData.trip_duration_max || 14,
+        earliest_departure: holidayData.start_date,
+        latest_return: holidayData.end_date,
+        min_length_days: tripLengthMin,
+        max_length_days: tripLengthMax,
         budget: holidayData.budget,
         preferences: {
           budget_sensitivity: holidayData.budget ? "high" : "medium",
           flexibility: "moderate",
           preferred_weekdays: holidayData.preferred_weekdays,
         },
+        thoughtCallback,
       })
 
       console.log(
-        `[Unified Search] OpenAI optimized to ${optimizedDatePairs.length} date pairs (max 5 allowed)`
+        `[Unified Search] Selected top ${top5Candidates.length} candidates globally`
       )
-      if (optimizedDatePairs.length > 0) {
+      if (top5Candidates.length > 0) {
         console.log(
-          "[Unified Search] Optimized dates:",
-          optimizedDatePairs.map(
-            (d) => `${d.depart_date} -> ${d.return_date} (confidence: ${d.confidence.toFixed(2)})`
+          "[Unified Search] Top 5 candidates:",
+          top5Candidates.map(
+            (c) => `${c.origin} → ${c.destination}: ${c.depart_date} (score: ${c.score.toFixed(2)})`
           )
         )
       }
     } catch (error) {
-      console.error("[Unified Search] Error optimizing dates:", error)
-      console.log("[Unified Search] Falling back to manual date generation")
-      optimizedDatePairs = generateManualDateFallback(holidayData).map((d) => ({
-        depart_date: d.outbound_date,
-        return_date: d.return_date,
-        confidence: d.priority / 10,
-        reasoning: d.reasoning,
-      }))
+      console.error("[Unified Search] Error scoring candidates globally:", error)
+      emitUserThought(thoughtCallback, "Using intelligent selection based on date patterns...")
+      
+      // Fallback: select top 5 diverse candidates manually
+      const byDestination = new Map<string, typeof allCandidates>()
+      allCandidates.forEach(c => {
+        const existing = byDestination.get(c.destination) || []
+        existing.push(c)
+        byDestination.set(c.destination, existing)
+      })
+
+      const fallbackSelected: typeof top5Candidates = []
+      for (const [destination, destCandidates] of byDestination.entries()) {
+        if (fallbackSelected.length >= 5) break
+        const best = destCandidates[0]
+        if (best) {
+          fallbackSelected.push({
+            origin: best.origin,
+            destination: best.destination,
+            depart_date: best.depart_date,
+            return_date: best.return_date,
+            score: 0.6,
+            reasoning: `Fallback selection for ${destination}`,
+          })
+        }
+      }
+
+      top5Candidates = fallbackSelected.slice(0, 5)
     }
 
-    // Ensure we have at least one date pair
-    if (optimizedDatePairs.length === 0) {
-      console.warn("[Unified Search] No optimized dates, generating fallback")
-      optimizedDatePairs = generateManualDateFallback(holidayData).map((d) => ({
-        depart_date: d.outbound_date,
-        return_date: d.return_date,
-        confidence: d.priority / 10,
-        reasoning: d.reasoning,
-      }))
+    // Ensure we have at least one candidate
+    if (top5Candidates.length === 0) {
+      console.warn("[Unified Search] No candidates selected, using fallback")
+      emitUserThought(thoughtCallback, "Generating date options...")
+      
+      if (allCandidates.length > 0) {
+        const firstCandidate = allCandidates[0]
+        top5Candidates = [{
+          origin: firstCandidate.origin,
+          destination: firstCandidate.destination,
+          depart_date: firstCandidate.depart_date,
+          return_date: firstCandidate.return_date,
+          score: 0.5,
+          reasoning: "Fallback candidate",
+        }]
+      } else {
+        // Ultimate fallback
+        const fallbackDates = generateManualDateFallback(holidayData)
+        if (fallbackDates.length > 0) {
+          top5Candidates = [{
+            origin: primaryOrigin,
+            destination: destinations[0] || "Unknown",
+            depart_date: fallbackDates[0].outbound_date,
+            return_date: fallbackDates[0].return_date,
+            score: 0.5,
+            reasoning: "Fallback date generation",
+          }]
+        }
+      }
     }
 
-    // Convert to the format expected by generateSearchParamsWithDates
-    const dateRecommendations = optimizedDatePairs.map((d, idx) => ({
-      outbound_date: d.depart_date,
-      return_date: d.return_date,
-      reasoning: d.reasoning,
-      priority: Math.round(d.confidence * 10),
+    emitUserThought(
+      thoughtCallback,
+      `Selected the top ${top5Candidates.length} date combinations globally for real-time price search.`
+    )
+
+    // Convert top 5 to format expected by search params generation
+    const dateRecommendations = top5Candidates.map((c) => ({
+      outbound_date: c.depart_date,
+      return_date: c.return_date,
+      reasoning: c.reasoning,
+      priority: Math.round(c.score * 100), // Convert 0-1 score to 0-100 priority
     }))
 
     // ========================================================================
-    // STEP 3: Generate Search Parameters (using recommended dates)
+    // STEP 3: Generate Search Parameters (TOP 5 ONLY - Global Selection)
     // ========================================================================
-    console.log("[Unified Search] STEP 3: Generating search parameters...")
-    let searchParamsArray: ReturnType<typeof generateSearchParams>
+    console.log("[Unified Search] STEP 3: Generating search parameters for top 5 candidates...")
+    let searchParamsArray: SerpApiFlightSearchParams[] = []
+
+    const MAX_SERPAPI_CALLS = 5
 
     try {
-      // Generate search params using optimized dates - LIMITED TO MAX 5 SERPAPI CALLS
-      const MAX_SERPAPI_CALLS = 5
-      
-      if (dateRecommendations.length > 0) {
-        // Generate search params - this function ensures we stay within MAX_SERPAPI_CALLS limit
-        searchParamsArray = generateSearchParamsWithDates(
-          holidayData,
-          dateRecommendations,
-          origins,
-          destinations,
-          MAX_SERPAPI_CALLS
+      // Generate search params directly from top 5 candidates
+      // Each candidate already has origin, destination, and dates
+      if (top5Candidates.length > 0) {
+        searchParamsArray = top5Candidates.slice(0, MAX_SERPAPI_CALLS).map((candidate) => ({
+          engine: "google_flights" as const,
+          departure_id: candidate.origin.trim(),
+          arrival_id: candidate.destination.trim(),
+          outbound_date: candidate.depart_date,
+          return_date: candidate.return_date,
+          currency: "EUR",
+          adults: 1,
+          sort_by: 1, // Top flights
+          num: 50,
+        }))
+
+        console.log("[Unified Search] Generated", searchParamsArray.length, "search parameter sets (TOP 5 GLOBAL)")
+        console.log("[Unified Search] SerpAPI calls: EXACTLY", searchParamsArray.length, "(max 5 enforced)")
+        console.log("[Unified Search] Candidates by destination:", 
+          top5Candidates.reduce((acc, c) => {
+            acc[c.destination] = (acc[c.destination] || 0) + 1
+            return acc
+          }, {} as Record<string, number>)
         )
-        console.log("[Unified Search] Generated", searchParamsArray.length, "search parameter sets")
-        console.log("[Unified Search] SerpAPI calls will be limited to:", MAX_SERPAPI_CALLS)
-        console.log("[Unified Search] Date range covered:", {
-          earliest: dateRecommendations.map(d => d.outbound_date).sort()[0],
-          latest: dateRecommendations.map(d => d.return_date).sort().reverse()[0],
-        })
-        
-        // Enforce the limit - take only the first MAX_SERPAPI_CALLS
-        if (searchParamsArray.length > MAX_SERPAPI_CALLS) {
-          console.warn(
-            `[Unified Search] WARNING: Generated ${searchParamsArray.length} params but limit is ${MAX_SERPAPI_CALLS}. Truncating.`
-          )
-          searchParamsArray = searchParamsArray.slice(0, MAX_SERPAPI_CALLS)
-        }
       } else {
-        // This should not happen as we generate fallback dates above, but just in case
-        console.warn("[Unified Search] No date recommendations available, using single date fallback")
-        searchParamsArray = generateSearchParams(holidayData)
-        // Still enforce limit
-        if (searchParamsArray.length > MAX_SERPAPI_CALLS) {
-          searchParamsArray = searchParamsArray.slice(0, MAX_SERPAPI_CALLS)
+        // Fallback: generate from date recommendations if available
+        console.warn("[Unified Search] No top 5 candidates, using fallback")
+        if (dateRecommendations.length > 0 && destinations.length > 0 && origins.length > 0) {
+          searchParamsArray = dateRecommendations.slice(0, MAX_SERPAPI_CALLS).flatMap((dateRec) => {
+            // Use first destination and origin for fallback
+            return [{
+              engine: "google_flights" as const,
+              departure_id: origins[0].trim(),
+              arrival_id: destinations[0].trim(),
+              outbound_date: dateRec.outbound_date,
+              return_date: dateRec.return_date,
+              currency: "EUR",
+              adults: 1,
+              sort_by: 1,
+              num: 50,
+            }]
+          }).slice(0, MAX_SERPAPI_CALLS)
+        } else {
+          // Ultimate fallback
+          searchParamsArray = generateSearchParams(holidayData).slice(0, MAX_SERPAPI_CALLS)
         }
-        console.log("[Unified Search] Generated", searchParamsArray.length, "search parameter sets (single date fallback)")
+        console.log("[Unified Search] Generated", searchParamsArray.length, "search parameter sets (fallback)")
       }
     } catch (error) {
       console.error("[Unified Search] Error generating search params:", error)
@@ -986,13 +1101,15 @@ export async function POST(
       offers: topOffers,
       preferences,
       message: `Found ${topOffers.length} best-matching flight offers`,
+      ai_thoughts: aiThoughts, // Include AI thinking process
       metadata: {
         total_retrieved: allRawResults.length,
         total_normalized: normalizedOffers.length,
         total_scored: scoredOffers.length,
         saved_to_db: savedCount || flightsToSave.length || 0,
         search_errors: errors.length > 0 ? errors : undefined,
-        saved_to_db: flightsToSave.length,
+        total_candidates_generated: allCandidates?.length || 0,
+        top_5_selected: top5Candidates?.length || 0,
       },
       debug: {
         search_params_count: searchParamsArray.length,

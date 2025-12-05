@@ -2,19 +2,35 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Plane } from "lucide-react"
 import Link from "next/link"
-import CreateHolidayForm from "@/components/create-holiday-form"
+import EditHolidayForm from "@/components/edit-holiday-form"
+import type { Holiday } from "@/lib/types"
 
-export default async function CreateHolidayPage() {
+export default async function EditHolidayPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const supabase = await createClient()
 
   const {
     data: { user },
-    error,
+    error: userError,
   } = await supabase.auth.getUser()
 
-  if (error || !user) {
+  if (userError || !user) {
     redirect("/auth/login")
   }
+
+  // Fetch holiday details
+  const { data: holiday, error: holidayError } = await supabase.from("holidays").select("*").eq("id", id).single()
+
+  if (holidayError || !holiday) {
+    redirect("/dashboard")
+  }
+
+  // Verify user owns this holiday (RLS should handle this, but double-check)
+  if (holiday.user_id !== user.id) {
+    redirect("/dashboard")
+  }
+
+  const holidayData = holiday as Holiday
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -34,14 +50,15 @@ export default async function CreateHolidayPage() {
       {/* Main Content */}
       <main className="container mx-auto px-6 pt-24 pb-16 max-w-2xl">
         <div className="mb-12">
-          <h1 className="text-3xl md:text-5xl font-bold mb-3 text-gray-900">Create a New Holiday</h1>
+          <h1 className="text-3xl md:text-5xl font-bold mb-3 text-gray-900">Edit Holiday</h1>
           <p className="text-base md:text-lg text-gray-700 leading-relaxed">
-            Set up your travel preferences and we'll start tracking the best flight deals for you
+            Update your travel preferences, dates, destinations, and other parameters
           </p>
         </div>
 
-        <CreateHolidayForm userId={user.id} />
+        <EditHolidayForm holiday={holidayData} />
       </main>
     </div>
   )
 }
+

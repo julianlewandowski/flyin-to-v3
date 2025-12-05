@@ -4,39 +4,40 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Landing Page Design System Colors */
+  --background: 243 244 246; /* gray-100 */
+  --foreground: 17 24 39; /* gray-900 */
+  --card: 229 231 235; /* gray-200 */
+  --card-foreground: 17 24 39; /* gray-900 */
+  --popover: 255 255 255; /* white */
+  --popover-foreground: 17 24 39; /* gray-900 */
+  --primary: 59 130 246; /* blue-500 */
+  --primary-foreground: 255 255 255; /* white */
+  --secondary: 229 231 235; /* gray-200 */
+  --secondary-foreground: 17 24 39; /* gray-900 */
+  --muted: 229 231 235; /* gray-200 */
+  --muted-foreground: 107 114 128; /* gray-500 */
+  --accent: 249 115 22; /* orange-500 */
+  --accent-foreground: 255 255 255; /* white */
+  --destructive: 239 68 68; /* red-500 */
+  --destructive-foreground: 255 255 255; /* white */
+  --border: 209 213 219; /* gray-300 */
+  --input: 255 255 255; /* white */
+  --ring: 59 130 246; /* blue-500 */
+  --chart-1: 59 130 246; /* blue-500 */
+  --chart-2: 249 115 22; /* orange-500 */
+  --chart-3: 16 185 129; /* green-500 */
+  --chart-4: 236 72 153; /* pink-500 */
+  --chart-5: 168 85 247; /* purple-500 */
+  --radius: 0.125rem; /* 2px - rounded-sm */
+  --sidebar: 255 255 255; /* white */
+  --sidebar-foreground: 17 24 39; /* gray-900 */
+  --sidebar-primary: 59 130 246; /* blue-500 */
+  --sidebar-primary-foreground: 255 255 255; /* white */
+  --sidebar-accent: 229 231 235; /* gray-200 */
+  --sidebar-accent-foreground: 17 24 39; /* gray-900 */
+  --sidebar-border: 209 213 219; /* gray-300 */
+  --sidebar-ring: 59 130 246; /* blue-500 */
 }
 
 @theme inline {
@@ -88,6 +89,59 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-gray-100 text-gray-900 antialiased;
   }
+}
+
+/* Landing Page Style Animations */
+@keyframes float-slow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(20px, -20px) scale(1.05);
+  }
+}
+
+@keyframes float-medium {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-15px, 15px) scale(1.03);
+  }
+}
+
+@keyframes float-fast {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(10px, -10px) scale(1.02);
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 20s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 15s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float-fast 10s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s ease-in-out infinite;
 }

@@ -15,34 +15,34 @@ export default function FlightCard({ flight }: FlightCardProps) {
     : null
 
   return (
-    <Card className={priceDropped ? "border-orange-500/50" : ""}>
+    <Card className={priceDropped ? "border-orange-500/50 bg-orange-500/5" : ""}>
       <CardContent className="pt-6">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col md:flex-row items-start justify-between gap-6">
           <div className="flex-1">
             {/* Outbound Leg */}
-            <div className="mb-4 pb-4 border-b">
-              <div className="flex items-center gap-4 mb-2">
+            <div className="mb-4 pb-4 border-b border-gray-300">
+              <div className="flex items-center gap-4 mb-3">
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase">Outbound</p>
-                  <p className="text-sm text-muted-foreground">From</p>
-                  <p className="font-semibold text-lg">{flight.origin}</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Outbound</p>
+                  <p className="text-sm text-gray-600 mb-1">From</p>
+                  <p className="font-bold text-lg text-gray-900">{flight.origin}</p>
                 </div>
-                <Plane className="h-5 w-5 text-muted-foreground" />
+                <Plane className="h-5 w-5 text-blue-500" />
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase">Outbound</p>
-                  <p className="text-sm text-muted-foreground">To</p>
-                  <p className="font-semibold text-lg">{flight.destination}</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Outbound</p>
+                  <p className="text-sm text-gray-600 mb-1">To</p>
+                  <p className="font-bold text-lg text-gray-900">{flight.destination}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-sm">
+              <div className="flex flex-wrap items-center gap-4 text-sm">
                 <div>
-                  <span className="text-muted-foreground">Departure: </span>
-                  <span className="font-medium">{new Date(flight.departure_date).toLocaleDateString()}</span>
+                  <span className="text-gray-600">Departure: </span>
+                  <span className="font-semibold text-gray-900">{new Date(flight.departure_date).toLocaleDateString()}</span>
                 </div>
                 {flight.airline && (
                   <div>
-                    <span className="text-muted-foreground">Airline: </span>
-                    <span className="font-medium">{flight.airline}</span>
+                    <span className="text-gray-600">Airline: </span>
+                    <span className="font-semibold text-gray-900">{flight.airline}</span>
                   </div>
                 )}
               </div>
@@ -51,60 +51,60 @@ export default function FlightCard({ flight }: FlightCardProps) {
             {/* Return Leg */}
             {flight.return_date && (
               <div className="mb-4">
-                <div className="flex items-center gap-4 mb-2">
+                <div className="flex items-center gap-4 mb-3">
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase">Return</p>
-                    <p className="text-sm text-muted-foreground">From</p>
-                    <p className="font-semibold text-lg">{flight.destination}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Return</p>
+                    <p className="text-sm text-gray-600 mb-1">From</p>
+                    <p className="font-bold text-lg text-gray-900">{flight.destination}</p>
                   </div>
-                  <Plane className="h-5 w-5 text-muted-foreground rotate-180" />
+                  <Plane className="h-5 w-5 text-blue-500 rotate-180" />
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase">Return</p>
-                    <p className="text-sm text-muted-foreground">To</p>
-                    <p className="font-semibold text-lg">{flight.origin}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-1">Return</p>
+                    <p className="text-sm text-gray-600 mb-1">To</p>
+                    <p className="font-bold text-lg text-gray-900">{flight.origin}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm">
+                <div className="flex flex-wrap items-center gap-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Return: </span>
-                    <span className="font-medium">{new Date(flight.return_date).toLocaleDateString()}</span>
+                    <span className="text-gray-600">Return: </span>
+                    <span className="font-semibold text-gray-900">{new Date(flight.return_date).toLocaleDateString()}</span>
                   </div>
                   {flight.airline && (
                     <div>
-                      <span className="text-muted-foreground">Airline: </span>
-                      <span className="font-medium">{flight.airline}</span>
+                      <span className="text-gray-600">Airline: </span>
+                      <span className="font-semibold text-gray-900">{flight.airline}</span>
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2 mb-2">
+            <div className="flex flex-wrap gap-2 mb-3">
               {flight.airline && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs border-gray-300 text-gray-700">
                   {flight.airline}
                 </Badge>
               )}
               {flight.layovers !== undefined && (
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs border-gray-300 text-gray-700">
                   {flight.layovers === 0 ? "Direct" : `${flight.layovers} stop${flight.layovers > 1 ? "s" : ""}`}
                 </Badge>
               )}
               {flight.flight_duration && (
-                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                <Badge variant="outline" className="text-xs flex items-center gap-1 border-gray-300 text-gray-700">
                   <Clock className="h-3 w-3" />
                   {flight.flight_duration}
                 </Badge>
               )}
               {flight.source && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20">
                   {flight.source}
                 </Badge>
               )}
             </div>
 
             {flight.baggage_info && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+              <div className="flex items-center gap-1 text-xs text-gray-600 mb-3">
                 <Luggage className="h-3 w-3" />
                 <span>
                   Cabin: {flight.baggage_info.cabin || "N/A"} | Checked: {flight.baggage_info.checked || "N/A"}
@@ -112,26 +112,26 @@ export default function FlightCard({ flight }: FlightCardProps) {
               </div>
             )}
 
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-600">
               {flight.verified_at
                 ? `Verified: ${new Date(flight.verified_at).toLocaleString()}`
                 : `Last checked: ${new Date(flight.last_checked).toLocaleString()}`}
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-right flex-shrink-0">
             {priceDropped && (
-              <div className="flex items-center gap-1 text-orange-500 text-sm mb-1">
+              <div className="flex items-center justify-end gap-1 text-orange-600 text-sm mb-2">
                 <TrendingDown className="h-4 w-4" />
-                <span className="font-semibold">-{priceDropPercent}%</span>
+                <span className="font-bold">-{priceDropPercent}%</span>
               </div>
             )}
             {flight.old_price && priceDropped && (
-              <p className="text-sm line-through text-muted-foreground">€{flight.old_price.toLocaleString()}</p>
+              <p className="text-sm line-through text-gray-500 mb-1">€{flight.old_price.toLocaleString()}</p>
             )}
-            <p className="text-3xl font-bold text-primary">€{flight.price.toLocaleString()}</p>
+            <p className="text-3xl font-black text-blue-600 mb-3">€{flight.price.toLocaleString()}</p>
             {(flight.referral_link || flight.booking_link) && (
               <a href={flight.referral_link || flight.booking_link!} target="_blank" rel="noopener noreferrer">
-                <Button size="sm" className="mt-2">
+                <Button size="sm" className="w-full md:w-auto">
                   Book Now
                   <ExternalLink className="h-4 w-4 ml-2" />
                 </Button>

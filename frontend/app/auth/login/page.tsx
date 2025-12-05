@@ -41,18 +41,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center p-6 md:p-10 bg-secondary">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Plane className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold">Flyin.to</span>
+    <div className="flex min-h-screen w-full items-center justify-center p-6 md:p-10 bg-gray-100">
+      <div className="w-full max-w-md">
+        <div className="flex flex-col gap-8">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <Plane className="h-8 w-8 text-blue-500" />
+            <span className="text-3xl font-black text-gray-900">Flyin.to</span>
           </div>
 
-          <Card>
+          <Card className="bg-white border-gray-300">
             <CardHeader>
-              <CardTitle className="text-2xl">Welcome back</CardTitle>
-              <CardDescription>Enter your email to log in to your account</CardDescription>
+              <CardTitle className="text-2xl md:text-3xl font-bold text-gray-900">Welcome back</CardTitle>
+              <CardDescription className="text-gray-600">Enter your email to log in to your account</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-6">
@@ -60,17 +60,17 @@ export default function LoginPage() {
                 
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
+                    <span className="w-full border-t border-gray-300" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
+                    <span className="bg-white px-3 text-gray-600 font-semibold tracking-wider">Or continue with email</span>
                   </div>
                 </div>
 
                 <form onSubmit={handleLogin}>
                   <div className="flex flex-col gap-6">
                     <div className="grid gap-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="email" className="text-gray-700 font-medium">Email</Label>
                       <Input
                         id="email"
                         type="email"
@@ -81,7 +81,7 @@ export default function LoginPage() {
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
                       <Input
                         id="password"
                         type="password"
@@ -90,7 +90,7 @@ export default function LoginPage() {
                         onChange={(e) => setPassword(e.target.value)}
                       />
                     </div>
-                    {error && <p className="text-sm text-destructive">{error}</p>}
+                    {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? "Logging in..." : "Log in"}
                     </Button>
@@ -98,8 +98,8 @@ export default function LoginPage() {
                 </form>
                 
                 <div className="text-center text-sm">
-                  Don&apos;t have an account?{" "}
-                  <Link href="/auth/sign-up" className="underline underline-offset-4 text-primary">
+                  <span className="text-gray-600">Don&apos;t have an account? </span>
+                  <Link href="/auth/sign-up" className="text-blue-500 hover:text-blue-600 underline underline-offset-4 font-medium">
                     Sign up
                   </Link>
                 </div>
