@@ -8,7 +8,7 @@ from ..core.auth import User, get_current_user, get_optional_user
 from ..core.database import get_db
 from ..core.config import get_settings
 from ..schemas.flight import SearchFlightsResponse
-from ..services import serpapi, normalize, ai_scout, llm_scorer, airports
+from ..services import serpapi, normalize, ai_scout, llm_scorer, airports, date_optimizer
 
 router = APIRouter(prefix="/holidays", tags=["holidays"])
 settings = get_settings()
@@ -174,31 +174,63 @@ async def search_flights_unified(
     
     preferences = await llm_scorer.extract_preferences(holiday_dict)
     
-    # Step 2: Get date recommendations
-    date_recs = await ai_scout.recommend_dates(
-        origin=origins[0],
-        destinations=holiday.get("destinations") or [],
+    # Step 2: Optimize dates using OpenAI (Phase 1 - Pre-filter to max 5 dates)
+    print("[Unified Search] STEP 2: Optimizing dates with OpenAI (Phase 1)...")
+    
+    trip_duration_min = holiday.get("trip_duration_min") or 3
+    trip_duration_max = holiday.get("trip_duration_max") or 14
+    
+    optimized_date_pairs = await date_optimizer.optimize_flight_dates(
+        origin_airports=expanded_origins,
+        destination_airports=expanded_destinations,
         start_date=holiday["start_date"],
         end_date=holiday["end_date"],
+        trip_length_min=trip_duration_min,
+        trip_length_max=trip_duration_max,
         budget=holiday.get("budget"),
-        trip_duration_min=holiday.get("trip_duration_min"),
-        trip_duration_max=holiday.get("trip_duration_max"),
-        preferred_weekdays=holiday.get("preferred_weekdays"),
+        preferences={
+            "budget_sensitivity": "high" if holiday.get("budget") else "medium",
+            "flexibility": "moderate",
+            "preferred_weekdays": holiday.get("preferred_weekdays"),
+        },
     )
     
-    if not date_recs:
-        raise HTTPException(status_code=400, detail="Could not generate date recommendations")
+    if not optimized_date_pairs:
+        raise HTTPException(status_code=400, detail="Could not optimize dates")
     
-    # Step 3: Generate search params
-    search_params = serpapi.generate_search_params(
+    print(f"[Unified Search] OpenAI optimized to {len(optimized_date_pairs)} date pairs (max 5 allowed)")
+    
+    # Convert to format expected by generate_search_params
+    date_recs = [
+        {
+            "outbound_date": pair["depart_date"],
+            "return_date": pair["return_date"],
+            "reasoning": pair.get("reasoning", "Optimized date"),
+            "priority": int(pair.get("confidence", 0.5) * 10),
+        }
+        for pair in optimized_date_pairs
+    ]
+    
+    # Step 3: Generate search params (with 5-call limit enforcement)
+    MAX_SERPAPI_CALLS = 5
+    search_params = serpapi.generate_search_params_with_limit(
         origins=expanded_origins,
         destinations=expanded_destinations,
         date_recommendations=date_recs,
+        max_calls=MAX_SERPAPI_CALLS,
     )
     
-    print(f"[Unified Search] Generated {len(search_params)} search params")
+    print(f"[Unified Search] Generated {len(search_params)} search params (limit: {MAX_SERPAPI_CALLS})")
     
-    # Step 4: Search SerpApi
+    # Enforce limit - take only the first MAX_SERPAPI_CALLS
+    if len(search_params) > MAX_SERPAPI_CALLS:
+        print(f"[Unified Search] WARNING: Generated {len(search_params)} params but limit is {MAX_SERPAPI_CALLS}. Truncating.")
+        search_params = search_params[:MAX_SERPAPI_CALLS]
+    
+    # Step 4: Search SerpApi (Phase 2 - Only optimized dates)
+    print("[Unified Search] STEP 4: Searching SerpApi (Phase 2) with optimized dates...")
+    print(f"[Unified Search] Phase 2: Using only {len(search_params)} optimized date pairs, ensuring max {MAX_SERPAPI_CALLS} SerpAPI calls")
+    
     search_results = await serpapi.search_flights_parallel(search_params)
     
     # Collect raw flights
@@ -268,6 +300,13 @@ async def search_flights_unified(
             "total_normalized": len(normalized),
             "total_scored": len(scored),
             "saved_to_db": len(top_offers),
+            "serpapi_calls": len(search_params),
+            "optimized_dates": len(optimized_date_pairs),
+        },
+        "debug": {
+            "search_params_count": len(search_params),
+            "raw_results_count": len(all_raw_flights),
+            "normalized_count": len(normalized),
         },
     }
 

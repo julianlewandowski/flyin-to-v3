@@ -1,4 +1,5 @@
 import { generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
 import type { AIDiscoveryResult } from "./types"
 
 export interface AIScoutParams {
@@ -58,7 +59,7 @@ Important:
 
   try {
     const { text } = await generateText({
-      model: "openai/gpt-4o-mini",
+      model: openai("gpt-4o-mini"), // Use OpenAI provider directly
       prompt,
       temperature: 0.3,
     })

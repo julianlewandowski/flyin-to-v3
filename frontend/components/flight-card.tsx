@@ -19,29 +19,65 @@ export default function FlightCard({ flight }: FlightCardProps) {
       <CardContent className="pt-6">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="flex items-center gap-4 mb-3">
-              <div>
-                <p className="text-sm text-muted-foreground">From</p>
-                <p className="font-semibold text-lg">{flight.origin}</p>
-              </div>
-              <Plane className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">To</p>
-                <p className="font-semibold text-lg">{flight.destination}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 text-sm mb-2">
-              <div>
-                <span className="text-muted-foreground">Departure: </span>
-                <span className="font-medium">{new Date(flight.departure_date).toLocaleDateString()}</span>
-              </div>
-              {flight.return_date && (
+            {/* Outbound Leg */}
+            <div className="mb-4 pb-4 border-b">
+              <div className="flex items-center gap-4 mb-2">
                 <div>
-                  <span className="text-muted-foreground">Return: </span>
-                  <span className="font-medium">{new Date(flight.return_date).toLocaleDateString()}</span>
+                  <p className="text-xs text-muted-foreground uppercase">Outbound</p>
+                  <p className="text-sm text-muted-foreground">From</p>
+                  <p className="font-semibold text-lg">{flight.origin}</p>
                 </div>
-              )}
+                <Plane className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase">Outbound</p>
+                  <p className="text-sm text-muted-foreground">To</p>
+                  <p className="font-semibold text-lg">{flight.destination}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Departure: </span>
+                  <span className="font-medium">{new Date(flight.departure_date).toLocaleDateString()}</span>
+                </div>
+                {flight.airline && (
+                  <div>
+                    <span className="text-muted-foreground">Airline: </span>
+                    <span className="font-medium">{flight.airline}</span>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Return Leg */}
+            {flight.return_date && (
+              <div className="mb-4">
+                <div className="flex items-center gap-4 mb-2">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase">Return</p>
+                    <p className="text-sm text-muted-foreground">From</p>
+                    <p className="font-semibold text-lg">{flight.destination}</p>
+                  </div>
+                  <Plane className="h-5 w-5 text-muted-foreground rotate-180" />
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase">Return</p>
+                    <p className="text-sm text-muted-foreground">To</p>
+                    <p className="font-semibold text-lg">{flight.origin}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Return: </span>
+                    <span className="font-medium">{new Date(flight.return_date).toLocaleDateString()}</span>
+                  </div>
+                  {flight.airline && (
+                    <div>
+                      <span className="text-muted-foreground">Airline: </span>
+                      <span className="font-medium">{flight.airline}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-2 mb-2">
               {flight.airline && (

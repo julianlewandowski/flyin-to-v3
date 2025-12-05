@@ -114,3 +114,95 @@ def generate_search_params(
                 ))
     
     return params
+
+
+def generate_search_params_with_limit(
+    origins: list[str],
+    destinations: list[str],
+    date_recommendations: list[dict],
+    max_calls: int = 5,
+    currency: str = "EUR",
+) -> list[SerpApiSearchParams]:
+    """Generate search params while respecting a maximum call limit.
+    
+    Intelligently selects origin-destination-date combinations to stay within
+    the limit, prioritizing highest priority dates and distributing across routes.
+    
+    Args:
+        origins: List of origin airport codes
+        destinations: List of destination airport codes
+        date_recommendations: List of date recommendations with priority
+        max_calls: Maximum number of SerpAPI calls allowed
+        currency: Currency code
+        
+    Returns:
+        List of SerpApiSearchParams, limited to max_calls
+    """
+    # Calculate total possible combinations
+    total_combinations = len(origins) * len(destinations) * len(date_recommendations)
+    
+    print(f"[SerpAPI] Total possible combinations: {total_combinations}")
+    print(f"[SerpAPI] Max allowed SerpAPI calls: {max_calls}")
+    
+    if total_combinations <= max_calls:
+        # We can search all combinations
+        return generate_search_params(origins, destinations, date_recommendations, currency)
+    
+    # We need to select intelligently
+    # Priority: Highest priority dates first, then distribute across routes
+    sorted_dates = sorted(date_recommendations, key=lambda x: x.get("priority", 0), reverse=True)
+    
+    # Create all possible combinations
+    all_combinations: list[dict[str, Any]] = []
+    
+    for origin in origins:
+        for destination in destinations:
+            for date_rec in sorted_dates:
+                all_combinations.append({
+                    "origin": origin,
+                    "destination": destination,
+                    "date": date_rec,
+                    "priority": date_rec.get("priority", 0),
+                })
+    
+    # Sort by priority (highest first)
+    all_combinations.sort(key=lambda x: x["priority"], reverse=True)
+    
+    # Select top N combinations, ensuring we cover different routes
+    selected_combinations = set()
+    selected: list[dict[str, Any]] = []
+    
+    for combo in all_combinations:
+        if len(selected) >= max_calls:
+            break
+        
+        # Create unique key for this combination
+        key = f"{combo['origin']}-{combo['destination']}-{combo['date']['outbound_date']}"
+        if key not in selected_combinations:
+            selected_combinations.add(key)
+            selected.append(combo)
+    
+    # If we still have slots, fill with remaining high-priority combinations
+    for combo in all_combinations:
+        if len(selected) >= max_calls:
+            break
+        
+        key = f"{combo['origin']}-{combo['destination']}-{combo['date']['outbound_date']}"
+        if key not in selected_combinations:
+            selected_combinations.add(key)
+            selected.append(combo)
+    
+    # Generate params from selected combinations
+    params = []
+    for combo in selected:
+        params.append(SerpApiSearchParams(
+            departure_id=combo["origin"].strip(),
+            arrival_id=combo["destination"].strip(),
+            outbound_date=combo["date"]["outbound_date"],
+            return_date=combo["date"].get("return_date"),
+            currency=currency,
+        ))
+    
+    print(f"[SerpAPI] Selected {len(params)} combinations from {total_combinations} possible")
+    
+    return params

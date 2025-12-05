@@ -6,6 +6,7 @@
  */
 
 import { generateObject } from "ai"
+import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
 import type { FlightOffer, FlightPreferences, ScoredFlightOffer } from "./types"
 
@@ -34,7 +35,7 @@ export async function scoreFlightOffer(
 
   try {
     const { object: scoring } = await generateObject({
-      model: "openai/gpt-4o-mini", // Match existing pattern in ai-scout.ts
+      model: openai("gpt-4o-mini"), // Use OpenAI provider directly
       schema: ScoringSchema,
       prompt,
       temperature: 0.3,

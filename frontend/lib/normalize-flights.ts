@@ -225,8 +225,26 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
       notes.push("Bags not included")
     }
 
-    // Generate unique ID
-    const id = `${provider}_${segments.map((s) => `${s.from.code}-${s.to.code}-${s.flight_number}`).join("_")}_${total}`
+    // Generate unique ID - include departure and arrival times to ensure uniqueness
+    const firstSegment = segments[0]
+    const lastSegment = segments[segments.length - 1]
+    const departureDateTime = firstSegment?.departure 
+      ? new Date(firstSegment.departure).toISOString().replace(/[:.]/g, "-").substring(0, 19) // YYYY-MM-DDTHH-MM-SS
+      : "unknown"
+    const arrivalDateTime = lastSegment?.arrival
+      ? new Date(lastSegment.arrival).toISOString().replace(/[:.]/g, "-").substring(0, 19)
+      : "unknown"
+    const routeStr = segments.map((s) => `${s.from.code}-${s.to.code}-${s.flight_number}`).join("_")
+    // Create a hash-like string from all unique components
+    const uniqueStr = `${departureDateTime}_${arrivalDateTime}_${routeStr}_${total}`
+    // Simple hash function for deterministic but unique IDs
+    let hash = 0
+    for (let i = 0; i < uniqueStr.length; i++) {
+      const char = uniqueStr.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // Convert to 32-bit integer
+    }
+    const id = `${provider}_${Math.abs(hash).toString(36)}_${departureDateTime.split("T")[0]}`
 
     return {
       id,

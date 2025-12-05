@@ -6,6 +6,7 @@
  */
 
 import { generateObject } from "ai"
+import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
 
 const DateRecommendationSchema = z.object({
@@ -43,7 +44,7 @@ export async function recommendDates(input: DateRecommendationInput): Promise<Ar
 
   try {
     const { object: recommendation } = await generateObject({
-      model: "openai/gpt-4o-mini",
+      model: openai("gpt-4o-mini"), // Use OpenAI provider directly
       schema: DateRecommendationSchema,
       prompt,
       temperature: 0.3, // Lower temperature for more consistent recommendations

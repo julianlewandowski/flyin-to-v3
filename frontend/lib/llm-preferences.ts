@@ -9,6 +9,7 @@
  */
 
 import { generateObject } from "ai"
+import { openai } from "@ai-sdk/openai"
 import { z } from "zod"
 import type { FlightPreferences } from "./types"
 
@@ -87,7 +88,7 @@ export async function extractPreferences(input: PreferenceExtractionInput): Prom
 
   try {
     const { object: preferences } = await generateObject({
-      model: "openai/gpt-4o-mini", // Match existing pattern in ai-scout.ts
+      model: openai("gpt-4o-mini"), // Use OpenAI provider directly
       schema: FlightPreferencesSchema,
       prompt,
       temperature: 0.3, // Lower temperature for more consistent extraction

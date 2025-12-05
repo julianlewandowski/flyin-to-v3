@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch"
 import { X, Sparkles } from "lucide-react"
 import { AirportAutocomplete } from "@/components/airport-autocomplete"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
+// Using Next.js API routes - no backend needed
 
 interface CreateHolidayFormProps {
   userId: string
@@ -120,38 +120,40 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
 
       // Automatically trigger unified flight search and insights generation
       try {
-        // Get auth token for backend calls
-        const { data: { session } } = await supabase.auth.getSession()
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-        }
-        if (session?.access_token) {
-          headers["Authorization"] = `Bearer ${session.access_token}`
-        }
-
         // Step 1: Trigger unified flight search (await to ensure it completes)
-        const searchResponse = await fetch(`${BACKEND_URL}/holidays/${data.id}/search-flights-unified`, {
+        console.log("[Create Holiday] Starting automatic flight search...")
+        const searchResponse = await fetch(`/api/holidays/${data.id}/search-flights-unified`, {
           method: "POST",
-          headers,
+          headers: {
+            "Content-Type": "application/json",
+          },
         })
         
         const searchData = await searchResponse.json()
         console.log("[Create Holiday] Auto-search response:", searchData)
         
-        if (searchResponse.ok && searchData.success && searchData.metadata?.saved_to_db > 0) {
-          // Step 2: Wait a moment for flights to be saved, then generate insights
-          await new Promise((resolve) => setTimeout(resolve, 2000))
+        if (searchResponse.ok && searchData.success) {
+          // Wait for flights to be saved to database
+          if (searchData.metadata?.saved_to_db > 0) {
+            console.log(`[Create Holiday] Saved ${searchData.metadata.saved_to_db} flights, waiting for database...`)
+            // Wait longer to ensure database is ready
+            await new Promise((resolve) => setTimeout(resolve, 3000))
+          }
           
-          // Step 3: Generate insights (only if flights were found)
+          // Step 2: Generate insights (only if flights were found)
           try {
-            await fetch(`${BACKEND_URL}/holidays/${data.id}/generate-insights`, {
+            await fetch(`/api/holidays/${data.id}/generate-insights`, {
               method: "POST",
-              headers,
+              headers: {
+                "Content-Type": "application/json",
+              },
             })
           } catch (insightsError) {
             // Insights generation is optional, don't fail the whole flow
             console.warn("Failed to generate insights automatically:", insightsError)
           }
+        } else {
+          console.warn("[Create Holiday] Search completed but no flights found:", searchData.message)
         }
       } catch (autoSearchError) {
         // Auto-search is best-effort, don't fail the holiday creation
@@ -159,9 +161,12 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
         console.warn("Failed to automatically search flights:", autoSearchError)
       }
 
-      // Redirect to dashboard - results should be ready
+      // Redirect to dashboard - page will auto-refresh to show results
       router.push(`/dashboard/holidays/${data.id}`)
-      router.refresh()
+      // Force a refresh after navigation to ensure flights are loaded
+      setTimeout(() => {
+        router.refresh()
+      }, 1000)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create holiday")
       setIsLoading(false)

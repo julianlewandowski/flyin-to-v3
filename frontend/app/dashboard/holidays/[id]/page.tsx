@@ -11,6 +11,7 @@ import GenerateInsightsButton from "@/components/generate-insights-button"
 import AiScoutButton from "@/components/ai-scout-button"
 import VerifyFlightsButton from "@/components/verify-flights-button"
 import UnifiedFlightSearchButton from "@/components/unified-flight-search-button"
+import AutoFlightSearch from "@/components/auto-flight-search"
 
 function getTimeAgo(dateString: string): string {
   if (!dateString) return "Never"
@@ -82,6 +83,14 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="min-h-screen bg-background">
       <HolidayHeader userEmail={user.email || ""} />
+
+      {/* Auto-trigger flight search if needed - disabled by default to prevent errors */}
+      <AutoFlightSearch
+        holidayId={id}
+        hasFlights={flightData.length > 0}
+        lastSearchDate={flightData.length > 0 ? flightData[0]?.last_checked || flightData[0]?.created_at : null}
+        autoSearchEnabled={false}
+      />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -245,7 +254,11 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <UnifiedFlightSearchButton holidayId={id} hasExistingFlights={flightData.length > 0} />
+                <UnifiedFlightSearchButton 
+                  holidayId={id} 
+                  hasExistingFlights={flightData.length > 0}
+                  initialFlightCount={flightData.length}
+                />
                 {flightData.length > 0 && hasAiResults && <VerifyFlightsButton holidayId={id} variant="outline" />}
               </div>
             </div>
@@ -279,7 +292,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold">AI Insights</h2>
-              {flightData.length > 0 && <GenerateInsightsButton holidayId={id} />}
+              <GenerateInsightsButton holidayId={id} />
             </div>
 
             {insightData.length === 0 ? (
