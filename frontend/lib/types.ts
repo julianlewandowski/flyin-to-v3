@@ -30,6 +30,8 @@ export interface Flight {
   old_price?: number | null
   airline: string | null
   booking_link: string | null
+  deal_url?: string | null
+  provider?: string | null
   source?: string
   verified_at?: string
   track_id?: string
@@ -130,6 +132,7 @@ export interface FlightOffer {
   num_stops: number
   class: "Economy" | "Premium Economy" | "Business" | "First" | string
   booking_link: string
+  deal_url?: string | null
   notes: string[]
 }
 

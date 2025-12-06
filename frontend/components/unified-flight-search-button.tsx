@@ -82,7 +82,11 @@ export default function UnifiedFlightSearchButton({
       // If search was successful, trigger polling to check for new flights
       if (res.ok && data.success) {
         setSearchJustCompleted(true)
-        // The FlightResultsPoller will handle refreshing when flights are detected
+        // Immediately refresh after a short delay to show new flights
+        // The FlightResultsPoller will also handle additional polling
+        setTimeout(() => {
+          router.refresh()
+        }, 2000) // Wait 2 seconds for database to save
       }
     } catch (err) {
       console.error("[Unified Search Button] Unexpected error:", err)

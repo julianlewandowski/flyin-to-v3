@@ -6,6 +6,7 @@
  */
 
 import type { FlightOffer, FlightSegment, Layover, AirportInfo, SerpApiFlightResult } from "./types"
+import { extractDealUrl } from "./provider-deep-link"
 
 /**
  * Parse airport information from SerpApi format
@@ -211,10 +212,70 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
     // Parse cabin class - SerpApi provides travel_class as a string
     const classStr = serpResult.travel_class || serpResult.class || serpResult.cabin_class || "Economy"
 
+    // Extract origin, destination, and dates from segments FIRST (needed for booking_link construction)
+    const firstSegment = segments[0]
+    const lastSegment = segments[segments.length - 1]
+    const origin = firstSegment?.from?.code || ""
+    const destination = lastSegment?.to?.code || ""
+    
+    // Extract dates from segments
+    const outboundDate = firstSegment?.departure 
+      ? new Date(firstSegment.departure).toISOString().split("T")[0]
+      : ""
+    const returnDate = lastSegment?.arrival
+      ? new Date(lastSegment.arrival).toISOString().split("T")[0]
+      : ""
+
     // Get booking link - SerpApi provides booking_token, need to construct URL or use departure_token
-    const booking_link = serpResult.booking_token 
-      ? `https://www.google.com/travel/flights?booking_token=${serpResult.booking_token}`
-      : serpResult.book_url || serpResult.booking_link || serpResult.link || ""
+    // Check for booking_token first (most reliable for Google Flights)
+    const booking_token = serpResult.booking_token || serpResult.departure_token
+    let booking_link = ""
+    
+    if (booking_token) {
+      // Construct Google Flights URL with search parameters for better pre-filling
+      // Note: booking_token is internal to Google Flights and may not work as a URL param
+      // So we construct a proper search URL that will pre-fill the form
+      if (origin && destination && outboundDate) {
+        // Build the search query in Google Flights format
+        const searchQuery = returnDate
+          ? `Flights%20from%20${encodeURIComponent(origin)}%20to%20${encodeURIComponent(destination)}%20on%20${outboundDate}%20returning%20${returnDate}`
+          : `Flights%20from%20${encodeURIComponent(origin)}%20to%20${encodeURIComponent(destination)}%20on%20${outboundDate}`
+        
+        booking_link = `https://www.google.com/travel/flights?q=${searchQuery}`
+      } else {
+        // Fallback: basic Google Flights URL
+        booking_link = `https://www.google.com/travel/flights`
+      }
+    } else {
+      booking_link = serpResult.book_url || serpResult.booking_link || serpResult.link || ""
+    }
+
+    // Extract deal_url and provider from SerpAPI result
+    // Build flight input from segments for fallback URL generation
+
+    // Extract deal_url using the provider deep-link utility
+    const flightInput = origin && destination && outboundDate ? {
+      origin,
+      destination,
+      outboundDate,
+      returnDate: returnDate || undefined,
+      adults: 1, // Default, could be extracted from search params if available
+    } : undefined
+
+    const { url: deal_url, provider: extractedProvider } = extractDealUrl(serpResult, flightInput)
+    
+    // Use extracted provider if available, otherwise use the passed provider
+    const finalProvider = extractedProvider && extractedProvider !== "Unknown" ? extractedProvider : provider
+
+    // Use deal_url if available, otherwise fallback to booking_link
+    const finalDealUrl = deal_url || booking_link || null
+
+    // Log if no deal_url could be generated (but we still have booking_link)
+    if (!deal_url && !booking_link) {
+      console.warn(`[Normalize] No deal_url or booking_link available for provider: ${finalProvider}`)
+    } else if (!deal_url && booking_link) {
+      console.log(`[Normalize] Using booking_link as deal_url for provider: ${finalProvider}`)
+    }
 
     // Extract notes
     const notes: string[] = []
@@ -226,8 +287,6 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
     }
 
     // Generate unique ID - include departure and arrival times to ensure uniqueness
-    const firstSegment = segments[0]
-    const lastSegment = segments[segments.length - 1]
     const departureDateTime = firstSegment?.departure 
       ? new Date(firstSegment.departure).toISOString().replace(/[:.]/g, "-").substring(0, 19) // YYYY-MM-DDTHH-MM-SS
       : "unknown"
@@ -244,11 +303,11 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
       hash = ((hash << 5) - hash) + char
       hash = hash & hash // Convert to 32-bit integer
     }
-    const id = `${provider}_${Math.abs(hash).toString(36)}_${departureDateTime.split("T")[0]}`
+    const id = `${finalProvider}_${Math.abs(hash).toString(36)}_${departureDateTime.split("T")[0]}`
 
     return {
       id,
-      provider,
+      provider: finalProvider,
       price: {
         total,
         currency,
@@ -259,6 +318,7 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
       num_stops,
       class: classStr,
       booking_link,
+      deal_url: finalDealUrl,
       notes,
     }
   } catch (error) {

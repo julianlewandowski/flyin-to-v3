@@ -131,26 +131,43 @@ function addCandidateForStartDay(
 
   if (departDate >= endDate) return null
 
-  // Sample trip length with bias toward shorter (cheaper) but include longer
+  // Sample trip length with better diversity across the full range
+  // Use a more uniform distribution to ensure we get variety (not just 7 or 14 days)
   const tripLengthRange = tripLengthMax - tripLengthMin
-  const sampleBias = 0.6 // 60% weight toward shorter trips
   
-  // Weighted sampling: more density at shorter lengths
+  // Strategy: Use a mix of uniform and weighted sampling for better diversity
   let sampledLength: number
-  if (Math.random() < sampleBias) {
-    // Bias toward shorter trips
-    const shorterRange = Math.floor(tripLengthRange * 0.4) // First 40% of range
+  const randomValue = Math.random()
+  
+  if (randomValue < 0.4) {
+    // 40%: Uniform distribution across full range (ensures all lengths are possible)
+    sampledLength = tripLengthMin + Math.floor(Math.random() * (tripLengthRange + 1))
+  } else if (randomValue < 0.7) {
+    // 30%: Bias toward shorter trips (cheaper)
+    const shorterRange = Math.floor(tripLengthRange * 0.5) // First 50% of range
     sampledLength = tripLengthMin + Math.floor(Math.random() * shorterRange)
   } else {
-    // Remaining 40% distributed across full range
-    sampledLength = tripLengthMin + Math.floor(Math.random() * tripLengthRange)
+    // 30%: Bias toward longer trips (more vacation time)
+    const longerRangeStart = Math.floor(tripLengthRange * 0.5)
+    sampledLength = tripLengthMin + longerRangeStart + Math.floor(Math.random() * (tripLengthRange - longerRangeStart + 1))
   }
   
   sampledLength = Math.max(tripLengthMin, Math.min(tripLengthMax, sampledLength))
 
-  // Ensure at least one sample uses max length
-  if (candidates.filter(c => c.trip_length_days === tripLengthMax).length === 0) {
-    sampledLength = tripLengthMax
+  // Ensure we have at least one sample at min, median, and max lengths for coverage
+  const existingLengths = new Set(candidates.map(c => c.trip_length_days))
+  if (existingLengths.size < 3) {
+    // If we don't have much diversity yet, prioritize min, median, max
+    if (!existingLengths.has(tripLengthMin)) {
+      sampledLength = tripLengthMin
+    } else if (!existingLengths.has(tripLengthMax)) {
+      sampledLength = tripLengthMax
+    } else {
+      const median = Math.floor((tripLengthMin + tripLengthMax) / 2)
+      if (!existingLengths.has(median)) {
+        sampledLength = median
+      }
+    }
   }
 
   const returnDate = new Date(departDate)
@@ -236,6 +253,8 @@ function createCandidateWithTripLength(
 
 /**
  * Ensure we have coverage across all trip lengths in the range.
+ * For ranges > 5 days, sample key lengths (min, 25%, 50%, 75%, max).
+ * For smaller ranges, try to cover all lengths.
  */
 function ensureTripLengthCoverage(
   candidates: DateCandidate[],
@@ -248,6 +267,7 @@ function ensureTripLengthCoverage(
 ) {
   const existingLengths = new Set(candidates.map(c => c.trip_length_days))
   const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+  const tripLengthRange = tripLengthMax - tripLengthMin
 
   // Sample points across the range for coverage
   const coveragePoints = [
@@ -256,11 +276,35 @@ function ensureTripLengthCoverage(
     { progress: 0.8, position: "late" as const },
   ]
 
-  // Check for missing trip lengths
-  for (let length = tripLengthMin; length <= tripLengthMax; length++) {
-    if (existingLengths.has(length)) continue
+  // Determine which trip lengths to ensure coverage for
+  const lengthsToCover: number[] = []
+  
+  if (tripLengthRange <= 5) {
+    // Small range: try to cover all lengths
+    for (let length = tripLengthMin; length <= tripLengthMax; length++) {
+      if (!existingLengths.has(length)) {
+        lengthsToCover.push(length)
+      }
+    }
+  } else {
+    // Larger range: ensure coverage of key points (min, 25%, 50%, 75%, max)
+    const keyLengths = [
+      tripLengthMin,
+      tripLengthMin + Math.floor(tripLengthRange * 0.25),
+      tripLengthMin + Math.floor(tripLengthRange * 0.5),
+      tripLengthMin + Math.floor(tripLengthRange * 0.75),
+      tripLengthMax,
+    ]
+    
+    for (const length of keyLengths) {
+      if (!existingLengths.has(length)) {
+        lengthsToCover.push(length)
+      }
+    }
+  }
 
-    // Add a candidate with this trip length
+  // Add candidates for missing trip lengths
+  for (const length of lengthsToCover) {
     for (const point of coveragePoints) {
       const daysFromStart = Math.floor(totalDays * point.progress)
       const candidate = createCandidateWithTripLength(
@@ -281,7 +325,7 @@ function ensureTripLengthCoverage(
   }
 
   // Ensure we have at least one max length trip
-  if (!existingLengths.has(tripLengthMax)) {
+  if (!existingLengths.has(tripLengthMax) && !lengthsToCover.includes(tripLengthMax)) {
     const midPointDays = Math.floor(totalDays * 0.5)
     const candidate = createCandidateWithTripLength(
       startDate,

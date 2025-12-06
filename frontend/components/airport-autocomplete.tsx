@@ -82,15 +82,15 @@ export function AirportAutocomplete({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0 bg-card border shadow-lg backdrop-blur-none" align="start">
-        <Command shouldFilter={false} className="bg-card rounded-md">
+      <PopoverContent className="w-[400px] p-0 bg-white border shadow-lg backdrop-blur-none" align="start">
+        <Command shouldFilter={false} className="bg-white rounded-md">
           <CommandInput
             placeholder="Search by airport name, city, or code..."
             value={searchQuery}
             onValueChange={setSearchQuery}
-            className="bg-card"
+            className="bg-white"
           />
-          <CommandList className="bg-card">
+          <CommandList className="bg-white">
             <CommandEmpty>
               {searchQuery ? `No airports found for "${searchQuery}"` : "Start typing to search airports..."}
             </CommandEmpty>

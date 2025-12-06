@@ -23,8 +23,8 @@ const CandidateScoreSchema = z.object({
 const CandidateFilterResultSchema = z.object({
   top_candidates: z
     .array(CandidateScoreSchema)
-    .max(7)
-    .describe("Top 5-7 candidate date pairs ranked by score, highest first"),
+    .max(10)
+    .describe("Top 5-10 candidate date pairs ranked by score, highest first"),
   analysis_summary: z
     .string()
     .describe("Brief summary of price trends and patterns identified"),
@@ -74,7 +74,7 @@ export async function filterDateCandidates(
     return []
   }
 
-  if (candidates.length <= 7) {
+  if (candidates.length <= 10) {
     // Already within limit, just return with default scores
     emitUserThought(thoughtCallback, `Found ${candidates.length} promising date combinations.`)
     return candidates.map(c => ({
@@ -115,7 +115,7 @@ export async function filterDateCandidates(
           orig => orig.depart_date === c.depart_date && orig.return_date === c.return_date
         )
       })
-      .slice(0, 7) // Ensure max 7
+      .slice(0, 10) // Ensure max 10
 
     // If we don't have enough, fill with remaining candidates
     if (validated.length < 5 && candidates.length >= 5) {
@@ -133,7 +133,7 @@ export async function filterDateCandidates(
       validated.push(...remaining)
     }
 
-    return validated.slice(0, 7)
+    return validated.slice(0, 10)
   } catch (error) {
     console.error("[Candidate Filter] Error filtering candidates:", error)
     emitUserThought(
@@ -298,7 +298,7 @@ function selectDiverseCandidates(
     }
   }
 
-  return selected.slice(0, 7).map(c => ({
+  return selected.slice(0, 10).map(c => ({
     depart_date: c.depart_date,
     return_date: c.return_date,
     score: 65,

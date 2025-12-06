@@ -7,7 +7,7 @@ import { ArrowLeft, Calendar, MapPin, DollarSign, Plane, TrendingDown, Sparkles,
 import Link from "next/link"
 import type { Holiday, Flight, AIInsight, Alert } from "@/lib/types"
 import HolidayHeader from "@/components/holiday-header"
-import FlightCard from "@/components/flight-card"
+import FlightList from "@/components/flight-list"
 import GenerateInsightsButton from "@/components/generate-insights-button"
 import AiScoutButton from "@/components/ai-scout-button"
 import VerifyFlightsButton from "@/components/verify-flights-button"
@@ -51,12 +51,28 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
   }
 
   // Fetch flights for this holiday
-  const { data: flights } = await supabase
+  // Default sort by price (ascending) - client-side sorting will handle the rest
+  const { data: flights, error: flightsError } = await supabase
     .from("flights")
     .select("*")
     .eq("holiday_id", id)
-    .order("last_checked", { ascending: false })
     .order("price", { ascending: true })
+
+  if (flightsError) {
+    console.error("[Dashboard] Error fetching flights:", flightsError)
+  } else {
+    console.log(`[Dashboard] Fetched ${flights?.length || 0} flights for holiday ${id}`)
+    if (flights && flights.length > 0) {
+      console.log("[Dashboard] Sample flight:", {
+        id: flights[0].id,
+        origin: flights[0].origin,
+        destination: flights[0].destination,
+        price: flights[0].price,
+        deal_url: flights[0].deal_url,
+        provider: flights[0].provider,
+      })
+    }
+  }
 
   // Fetch AI insights
   const { data: insights } = await supabase
@@ -289,11 +305,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
-                {flightData.map((flight) => (
-                  <FlightCard key={flight.id} flight={flight} />
-                ))}
-              </div>
+              <FlightList flights={flightData} />
             )}
           </div>
 

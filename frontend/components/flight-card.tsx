@@ -8,6 +8,29 @@ interface FlightCardProps {
   flight: Flight
 }
 
+// Format date consistently for server and client (prevents hydration errors)
+function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return "N/A"
+  const date = new Date(dateString)
+  // Use a consistent format that works the same on server and client
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${month}/${day}/${year}`
+}
+
+// Format date and time consistently
+function formatDateTime(dateString: string | null | undefined): string {
+  if (!dateString) return "N/A"
+  const date = new Date(dateString)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  const hours = String(date.getHours()).padStart(2, "0")
+  const minutes = String(date.getMinutes()).padStart(2, "0")
+  return `${month}/${day}/${year} ${hours}:${minutes}`
+}
+
 export default function FlightCard({ flight }: FlightCardProps) {
   const priceDropped = flight.old_price && flight.price < flight.old_price
   const priceDropPercent = priceDropped
@@ -37,7 +60,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <div>
                   <span className="text-gray-600">Departure: </span>
-                  <span className="font-semibold text-gray-900">{new Date(flight.departure_date).toLocaleDateString()}</span>
+                  <span className="font-semibold text-gray-900">{formatDate(flight.departure_date)}</span>
                 </div>
                 {flight.airline && (
                   <div>
@@ -67,7 +90,7 @@ export default function FlightCard({ flight }: FlightCardProps) {
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                   <div>
                     <span className="text-gray-600">Return: </span>
-                    <span className="font-semibold text-gray-900">{new Date(flight.return_date).toLocaleDateString()}</span>
+                    <span className="font-semibold text-gray-900">{formatDate(flight.return_date)}</span>
                   </div>
                   {flight.airline && (
                     <div>
@@ -114,8 +137,8 @@ export default function FlightCard({ flight }: FlightCardProps) {
 
             <p className="text-xs text-gray-600">
               {flight.verified_at
-                ? `Verified: ${new Date(flight.verified_at).toLocaleString()}`
-                : `Last checked: ${new Date(flight.last_checked).toLocaleString()}`}
+                ? `Verified: ${formatDateTime(flight.verified_at)}`
+                : `Last checked: ${formatDateTime(flight.last_checked)}`}
             </p>
           </div>
           <div className="text-right flex-shrink-0">
@@ -129,10 +152,14 @@ export default function FlightCard({ flight }: FlightCardProps) {
               <p className="text-sm line-through text-gray-500 mb-1">€{flight.old_price.toLocaleString()}</p>
             )}
             <p className="text-3xl font-black text-blue-600 mb-3">€{flight.price.toLocaleString()}</p>
-            {(flight.referral_link || flight.booking_link) && (
-              <a href={flight.referral_link || flight.booking_link!} target="_blank" rel="noopener noreferrer">
+            {(flight.deal_url || flight.referral_link || flight.booking_link) && (
+              <a 
+                href={flight.deal_url || flight.referral_link || flight.booking_link!} 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
                 <Button size="sm" className="w-full md:w-auto">
-                  Book Now
+                  View Deal
                   <ExternalLink className="h-4 w-4 ml-2" />
                 </Button>
               </a>
