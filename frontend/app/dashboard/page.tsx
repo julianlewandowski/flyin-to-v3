@@ -2,10 +2,12 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Calendar, MapPin, DollarSign, Plane } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Plus, Calendar, MapPin, DollarSign, Plane, TrendingDown, Bell } from "lucide-react"
 import Link from "next/link"
-import type { Holiday } from "@/lib/types"
+import type { Holiday, PriceDropAlert } from "@/lib/types"
 import { fetchHolidaysForCurrentUser } from "@/lib/backend"
+import GlobalPriceAlertBanner, { InlinePriceAlertIndicator } from "@/components/global-price-alert-banner"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -30,14 +32,18 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Global Price Alert Banner */}
+      <GlobalPriceAlertBanner className="fixed top-0 left-0 right-0 z-[60]" />
+      
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-300">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-300 mt-0 transition-all [.has-alerts_&]:mt-10">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-3">
             <Plane className="h-6 w-6 text-blue-500" />
             <span className="text-xl font-bold text-gray-900">Flyin.to</span>
           </Link>
           <div className="flex items-center gap-4">
+            <InlinePriceAlertIndicator />
             <span className="text-sm text-gray-600 hidden md:block">{user.email}</span>
             <form action="/auth/signout" method="post">
               <Button variant="ghost" size="sm">
@@ -93,15 +99,34 @@ export default async function DashboardPage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {userHolidays.map((holiday) => (
               <Link key={holiday.id} href={`/dashboard/holidays/${holiday.id}`}>
-                <Card className="hover:shadow-md hover:border-gray-400 transition-all duration-500 cursor-pointer h-full group">
+                <Card className={`hover:shadow-md hover:border-gray-400 transition-all duration-500 cursor-pointer h-full group ${
+                  holiday.has_active_price_alert ? "ring-2 ring-emerald-300 border-emerald-300" : ""
+                }`}>
                   <CardHeader>
-                    <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
-                      {holiday.name}
-                    </CardTitle>
-                    <CardDescription className="flex items-center gap-1 text-gray-600">
-                      <MapPin className="h-4 w-4" />
-                      {holiday.destinations.length} destination{holiday.destinations.length !== 1 ? "s" : ""}
-                    </CardDescription>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
+                          {holiday.name}
+                        </CardTitle>
+                        <CardDescription className="flex items-center gap-1 text-gray-600">
+                          <MapPin className="h-4 w-4" />
+                          {holiday.destinations.length} destination{holiday.destinations.length !== 1 ? "s" : ""}
+                        </CardDescription>
+                      </div>
+                      {/* Price Alert Badge */}
+                      {holiday.has_active_price_alert && (
+                        <Badge className="bg-emerald-500 text-white hover:bg-emerald-600 flex items-center gap-1 flex-shrink-0">
+                          <TrendingDown className="h-3 w-3" />
+                          Price Drop!
+                        </Badge>
+                      )}
+                      {/* Price Tracking Indicator */}
+                      {holiday.price_tracking_enabled && !holiday.has_active_price_alert && (
+                        <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0" title="Price tracking enabled">
+                          <Bell className="h-3 w-3 text-blue-500" />
+                        </div>
+                      )}
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">

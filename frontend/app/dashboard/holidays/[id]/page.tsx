@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Calendar, MapPin, DollarSign, Plane, TrendingDown, Sparkles, Edit } from "lucide-react"
 import Link from "next/link"
-import type { Holiday, Flight, AIInsight, Alert } from "@/lib/types"
+import type { Holiday, Flight, AIInsight, Alert, PriceDropAlert as PriceDropAlertType } from "@/lib/types"
 import HolidayHeader from "@/components/holiday-header"
 import FlightList from "@/components/flight-list"
 import GenerateInsightsButton from "@/components/generate-insights-button"
@@ -14,6 +14,9 @@ import VerifyFlightsButton from "@/components/verify-flights-button"
 import UnifiedFlightSearchButton from "@/components/unified-flight-search-button"
 import AutoFlightSearch from "@/components/auto-flight-search"
 import SmartInsightsSection from "@/components/smart-insights"
+import PriceTrackingToggle from "@/components/price-tracking-toggle"
+import PriceDropAlert from "@/components/price-drop-alert"
+import GlobalPriceAlertBanner from "@/components/global-price-alert-banner"
 
 function getTimeAgo(dateString: string): string {
   if (!dateString) return "Never"
@@ -82,7 +85,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
     .eq("holiday_id", id)
     .order("created_at", { ascending: false })
 
-  // Fetch alerts
+  // Fetch alerts (old system)
   const { data: alerts } = await supabase
     .from("alerts")
     .select("*")
@@ -90,10 +93,20 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
     .order("created_at", { ascending: false })
     .limit(5)
 
+  // Fetch price drop alerts (new system)
+  const { data: priceDropAlerts } = await supabase
+    .from("price_drop_alerts")
+    .select("*")
+    .eq("holiday_id", id)
+    .eq("resolved", false)
+    .order("created_at", { ascending: false })
+    .limit(5)
+
   const holidayData = holiday as Holiday
   const flightData = (flights as Flight[]) || []
   const insightData = (insights as AIInsight[]) || []
   const alertData = (alerts as Alert[]) || []
+  const priceDropAlertData = (priceDropAlerts as PriceDropAlertType[]) || []
 
   // Only show old AI Scout if using AI discovery but no destinations AND no old AI results
   const needsAiScan = holidayData.use_ai_discovery && 
@@ -103,6 +116,11 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Global Price Alert Banner for this holiday */}
+      {holidayData.has_active_price_alert && (
+        <GlobalPriceAlertBanner holidayId={id} className="fixed top-0 left-0 right-0 z-[60]" />
+      )}
+      
       <HolidayHeader userEmail={user.email || ""} />
 
       {/* Auto-trigger flight search if needed - disabled by default to prevent errors */}
@@ -114,7 +132,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
       />
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 pt-24 pb-16">
+      <main className={`container mx-auto px-6 pb-16 ${holidayData.has_active_price_alert ? "pt-32" : "pt-24"}`}>
         <Link href="/dashboard">
           <button className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 mb-8 transition-colors duration-300">
             <ArrowLeft className="h-4 w-4" />
@@ -122,8 +140,26 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
           </button>
         </Link>
 
+        {/* Price Drop Alert - Show prominently at the top if active */}
+        {priceDropAlertData.length > 0 && (
+          <div className="mb-6 space-y-3">
+            {priceDropAlertData.map((alert) => (
+              <PriceDropAlert
+                key={alert.id}
+                alert={alert}
+                holidayName={holidayData.name}
+                showHolidayName={false}
+                onViewFlights={() => {
+                  // Scroll to flights section
+                  document.getElementById("flights-section")?.scrollIntoView({ behavior: "smooth" })
+                }}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Holiday Info */}
-        <Card className="mb-8">
+        <Card className="mb-6">
           <CardHeader>
             <div className="flex items-start justify-between">
               <div>
@@ -195,6 +231,17 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
             </div>
           </CardContent>
         </Card>
+
+        {/* Price Tracking Toggle */}
+        <div className="mb-8">
+          <PriceTrackingToggle
+            holidayId={id}
+            initialEnabled={holidayData.price_tracking_enabled || false}
+            initialLastPrice={holidayData.last_tracked_price || null}
+            initialThreshold={holidayData.price_drop_threshold_percent || 10}
+            hasFlights={flightData.length > 0}
+          />
+        </div>
 
         {needsAiScan && (
           <Card className="mb-8 border-blue-500/50 bg-blue-500/5">
@@ -272,7 +319,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Flights Section */}
-          <div className="lg:col-span-2">
+          <div id="flights-section" className="lg:col-span-2">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
               <div>
                 <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Flight Options</h2>

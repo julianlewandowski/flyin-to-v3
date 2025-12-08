@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     DEV_BYPASS_AUTH: bool = False
     DEBUG: bool = False
     
+    # Cron job security
+    CRON_SECRET: str = ""
+    
+    # Email notifications (optional)
+    RESEND_API_KEY: str = ""
+    
     # Use pydantic-settings v2 syntax
     model_config = SettingsConfigDict(
         env_file=str(ENV_FILE),

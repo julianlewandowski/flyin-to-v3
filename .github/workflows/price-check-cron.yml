@@ -1,0 +1,42 @@
+# Daily Price Check Cron Job
+# Runs every day at 8 AM UTC to check for price drops
+
+name: Daily Price Check
+
+on:
+  schedule:
+    # Run at 8:00 AM UTC every day
+    - cron: '0 8 * * *'
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  price-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Trigger Price Check
+        run: |
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.BACKEND_URL }}/price-tracking/cron/daily-check" \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: ${{ secrets.CRON_SECRET }}")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "Response: $body"
+          echo "HTTP Code: $http_code"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "Error: Price check failed with status $http_code"
+            exit 1
+          fi
+          
+          echo "✅ Price check completed successfully"
+
+      - name: Summary
+        run: |
+          echo "## Price Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "Triggered at: $(date -u)" >> $GITHUB_STEP_SUMMARY
+

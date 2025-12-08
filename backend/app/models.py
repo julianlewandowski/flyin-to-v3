@@ -27,6 +27,12 @@ class Holiday(Base):
     use_ai_discovery = Column(Boolean, default=False)
     ai_discovery_results = Column(JSON, nullable=True)
     last_ai_scan = Column(DateTime, nullable=True)
+    # Price tracking fields
+    price_tracking_enabled = Column(Boolean, default=False)
+    last_tracked_price = Column(Numeric(10, 2), nullable=True)
+    price_drop_threshold_percent = Column(Numeric(5, 2), default=10.0)
+    has_active_price_alert = Column(Boolean, default=False)
+    last_price_check = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -78,5 +84,21 @@ class Alert(Base):
     old_price = Column(Numeric(10, 2), nullable=False)
     new_price = Column(Numeric(10, 2), nullable=False)
     price_drop_percent = Column(Numeric(5, 2), nullable=False)
+    notified = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class PriceDropAlert(Base):
+    """Price drop alert for tracked holidays (no flight_id dependency)."""
+    __tablename__ = "price_drop_alerts"
+
+    id = Column(String, primary_key=True, default=lambda: str(__import__('uuid').uuid4()))
+    holiday_id = Column(String, ForeignKey("holidays.id"), nullable=False)
+    old_price = Column(Numeric(10, 2), nullable=False)
+    new_price = Column(Numeric(10, 2), nullable=False)
+    percent_drop = Column(Numeric(5, 2), nullable=False)
+    route_info = Column(JSON, nullable=True)  # {origin, destination}
+    date_info = Column(JSON, nullable=True)  # {departure_date, return_date}
+    resolved = Column(Boolean, default=False)
     notified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)

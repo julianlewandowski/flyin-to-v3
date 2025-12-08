@@ -15,6 +15,12 @@ export interface Holiday {
   use_ai_discovery?: boolean
   ai_discovery_results?: AIDiscoveryResult[]
   last_ai_scan?: string
+  // Price tracking fields
+  price_tracking_enabled?: boolean
+  last_tracked_price?: number | null
+  price_drop_threshold_percent?: number
+  has_active_price_alert?: boolean
+  last_price_check?: string
   created_at: string
   updated_at: string
 }
@@ -98,6 +104,33 @@ export interface Alert {
   price_drop_percent: number
   notified: boolean
   created_at: string
+}
+
+export interface PriceDropAlert {
+  id: string
+  holiday_id: string
+  old_price: number
+  new_price: number
+  percent_drop: number
+  route_info?: {
+    origin?: string
+    destination?: string
+  }
+  date_info?: {
+    departure_date?: string
+    return_date?: string
+  }
+  resolved: boolean
+  notified: boolean
+  created_at: string
+}
+
+export interface PriceTrackingStatus {
+  enabled: boolean
+  last_tracked_price: number | null
+  threshold_percent: number
+  has_active_alert: boolean
+  last_check: string | null
 }
 
 export interface AirhobSearchRequest {

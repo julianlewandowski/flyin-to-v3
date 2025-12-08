@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.auth import get_current_user, User
 from .core.config import get_settings
-from .routers import holidays, flights, ai
+from .routers import holidays, flights, ai, price_tracking
 
 settings = get_settings()
 
@@ -27,6 +27,7 @@ app.add_middleware(
 app.include_router(holidays.router)
 app.include_router(flights.router)
 app.include_router(ai.router)
+app.include_router(price_tracking.router)
 
 
 @app.get("/health")

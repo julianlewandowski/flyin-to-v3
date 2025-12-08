@@ -1,5 +1,6 @@
 import { Plane } from "lucide-react"
 import Link from "next/link"
+import { InlinePriceAlertIndicator } from "@/components/global-price-alert-banner"
 
 interface HolidayHeaderProps {
   userEmail: string
@@ -14,6 +15,7 @@ export default function HolidayHeader({ userEmail }: HolidayHeaderProps) {
           <span className="text-xl font-bold text-gray-900">Flyin.to</span>
         </Link>
         <div className="flex items-center gap-4">
+          <InlinePriceAlertIndicator />
           <span className="text-sm text-gray-600 hidden md:block">{userEmail}</span>
         </div>
       </div>
