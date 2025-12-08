@@ -12,3 +12,5 @@ CREATE INDEX IF NOT EXISTS flights_provider_idx ON public.flights(provider);
 COMMENT ON COLUMN public.flights.deal_url IS 'Direct deep-link URL to the provider''s booking page';
 COMMENT ON COLUMN public.flights.provider IS 'Provider name (e.g., Turkish Airlines, Expedia, Google Flights)';
 
+
+

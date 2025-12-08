@@ -139,3 +139,5 @@ After running the migration:
 3. ✅ Test the application to ensure everything works
 4. ✅ Check that flight searches are saving `deal_url` and `provider` fields
 
+
+

@@ -220,3 +220,5 @@ COMMENT ON COLUMN public.flights.provider IS 'Provider name (e.g., Turkish Airli
 -- Your database should now be up to date with the current Flyin.to schema.
 -- ============================================================================
 
+
+
