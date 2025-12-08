@@ -37,3 +37,6 @@ export default function FlightList({ flights: initialFlights }: FlightListProps)
 
 
 
+
+
+

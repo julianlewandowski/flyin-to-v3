@@ -95,7 +95,10 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
   const insightData = (insights as AIInsight[]) || []
   const alertData = (alerts as Alert[]) || []
 
-  const needsAiScan = holidayData.use_ai_discovery && !holidayData.ai_discovery_results
+  // Only show old AI Scout if using AI discovery but no destinations AND no old AI results
+  const needsAiScan = holidayData.use_ai_discovery && 
+                      (!holidayData.destinations || holidayData.destinations.length === 0) && 
+                      !holidayData.ai_discovery_results
   const hasAiResults = holidayData.ai_discovery_results && holidayData.ai_discovery_results.length > 0
 
   return (
@@ -160,9 +163,9 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                   Destinations
                 </div>
                 <p className="font-bold text-lg text-gray-900">
-                  {holidayData.use_ai_discovery && holidayData.destinations.length === 0
-                    ? "Flexible (AI)"
-                    : holidayData.destinations.join(", ")}
+                  {holidayData.destinations && holidayData.destinations.length > 0
+                    ? holidayData.destinations.join(", ")
+                    : "No destinations set"}
                 </p>
               </div>
               <div>
@@ -297,11 +300,13 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                   </div>
                   <h3 className="text-xl font-bold mb-2 text-gray-900">No flights found yet</h3>
                   <p className="text-gray-700 text-center max-w-md leading-relaxed">
-                    {needsAiScan
-                      ? "Run AI discovery to find the best routes"
-                      : hasAiResults
-                        ? "Verify AI-discovered routes to see live prices"
-                        : "Start by running AI discovery or manually adding destinations"}
+                    {holidayData.destinations && holidayData.destinations.length > 0
+                      ? "Click 'Search Flights' above to find flights to your destinations"
+                      : needsAiScan
+                        ? "Run AI discovery to find the best routes"
+                        : hasAiResults
+                          ? "Verify AI-discovered routes to see live prices"
+                          : "Start by running AI discovery or manually adding destinations"}
                   </p>
                 </CardContent>
               </Card>

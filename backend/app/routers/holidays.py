@@ -99,7 +99,7 @@ async def delete_holiday(
 @router.get("/{holiday_id}/smart-insights")
 async def get_smart_insights(
     holiday_id: str,
-    current_user: User = Depends(get_current_user),
+    user: User | None = Depends(get_optional_user),
     db: Client = Depends(get_db),
 ):
     """
@@ -107,7 +107,11 @@ async def get_smart_insights(
     Returns: price analysis histogram, alternative suggestions, and weather forecast.
     """
     # Fetch holiday
-    holiday_response = db.table("holidays").select("*").eq("id", holiday_id).eq("user_id", current_user.id).execute()
+    query = db.table("holidays").select("*").eq("id", holiday_id)
+    if user and not settings.DEV_BYPASS_AUTH:
+        query = query.eq("user_id", user.id)
+    
+    holiday_response = query.execute()
     
     if not holiday_response.data or len(holiday_response.data) == 0:
         raise HTTPException(status_code=404, detail="Holiday not found")
@@ -118,8 +122,52 @@ async def get_smart_insights(
     flights_response = db.table("flights").select("*").eq("holiday_id", holiday_id).order("price").execute()
     flights = flights_response.data or []
     
+    if not flights:
+        return {
+            "success": False,
+            "holiday_id": holiday_id,
+            "error": "No flights found for this holiday. Please search for flights first.",
+            "price_analysis": None,
+            "alternative_suggestions": None,
+            "weather_forecast": None,
+        }
+    
     # Generate all insights
-    all_insights = await insights.get_all_insights(holiday, flights)
+    try:
+        # Verify insights module is available
+        if not hasattr(insights, 'get_all_insights'):
+            raise AttributeError("insights module does not have get_all_insights function")
+        
+        all_insights = await insights.get_all_insights(holiday, flights)
+    except ImportError as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[Smart Insights] Import error: {e}")
+        print(f"[Smart Insights] Traceback: {error_trace}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to import insights module: {str(e)}. Please restart the backend server."
+        )
+    except AttributeError as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[Smart Insights] Attribute error: {e}")
+        print(f"[Smart Insights] Traceback: {error_trace}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Insights service error: {str(e)}. Please check backend logs."
+        )
+    except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        error_msg = str(e) if e else "Unknown error"
+        print(f"[Smart Insights] Error calling insights.get_all_insights: {error_msg}")
+        print(f"[Smart Insights] Error type: {type(e).__name__}")
+        print(f"[Smart Insights] Full traceback:\n{error_trace}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate insights: {error_msg}"
+        )
     
     return {
         "success": True,

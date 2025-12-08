@@ -655,17 +655,46 @@ def _get_packing_tips(avg_temp: float, forecasts: list[dict]) -> list[str]:
 
 async def get_all_insights(holiday: dict, flights: list[dict]) -> dict[str, Any]:
     """Get all insights for a holiday."""
-    price_analysis = await get_price_analysis(holiday, flights)
-    alternatives = await get_alternative_suggestions(holiday, flights)
+    if not flights:
+        return {
+            "price_analysis": {"error": "No flights available for analysis"},
+            "alternative_suggestions": {"error": "No flights available for suggestions"},
+            "weather_forecast": {"error": "No destination available"},
+            "generated_at": datetime.utcnow().isoformat(),
+        }
+    
+    # Get insights with error handling - if one fails, continue with others
+    price_analysis = {"error": "Failed to generate price analysis"}
+    alternatives = {"error": "Failed to generate alternative suggestions"}
+    weather = {"error": "Failed to generate weather forecast"}
+    
+    try:
+        price_analysis = await get_price_analysis(holiday, flights)
+    except Exception as e:
+        print(f"[Insights] Error in price analysis: {e}")
+        price_analysis = {"error": f"Price analysis failed: {str(e)}"}
+    
+    try:
+        alternatives = await get_alternative_suggestions(holiday, flights)
+    except Exception as e:
+        print(f"[Insights] Error in alternative suggestions: {e}")
+        alternatives = {"error": f"Alternative suggestions failed: {str(e)}"}
     
     # Get weather for primary destination
     destination = None
     if flights:
         destination = flights[0].get("destination")
     elif holiday.get("destinations"):
-        destination = holiday["destinations"][0]
+        destination = holiday["destinations"][0] if holiday["destinations"] else None
     
-    weather = await get_weather_forecast(holiday, destination)
+    if destination:
+        try:
+            weather = await get_weather_forecast(holiday, destination)
+        except Exception as e:
+            print(f"[Insights] Error in weather forecast: {e}")
+            weather = {"error": f"Weather forecast failed: {str(e)}"}
+    else:
+        weather = {"error": "No destination available for weather forecast"}
     
     return {
         "price_analysis": price_analysis,

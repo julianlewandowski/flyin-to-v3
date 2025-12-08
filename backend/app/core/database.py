@@ -29,12 +29,30 @@ def get_supabase() -> Client:
         )
         
         if not url or not key:
-            raise RuntimeError(
-                "Supabase not configured. Set SUPABASE_PROJECT_URL and SUPABASE_SERVICE_ROLE_KEY."
+            error_msg = (
+                "Supabase not configured. Set SUPABASE_PROJECT_URL and SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_ANON_KEY).\n"
+                f"Current values: URL={'SET' if url else 'MISSING'}, KEY={'SET' if key else 'MISSING'}\n"
+                "Check your .env file in the backend directory."
             )
+            raise RuntimeError(error_msg)
         
         print(f"[Database] Connecting to Supabase: {url[:40]}...")
-        _supabase_client = create_client(url, key)
+        try:
+            _supabase_client = create_client(url, key)
+        except Exception as e:
+            # Provide helpful error message for invalid API key
+            key_preview = f"{key[:10]}...{key[-4:]}" if len(key) > 14 else "***"
+            error_msg = (
+                f"Failed to connect to Supabase: {str(e)}\n"
+                f"URL: {url[:50]}...\n"
+                f"Key preview: {key_preview}\n"
+                "Please verify:\n"
+                "1. SUPABASE_PROJECT_URL is correct (should start with https://)\n"
+                "2. SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY is valid\n"
+                "3. No extra spaces or quotes in your .env file\n"
+                "4. The key matches your Supabase project (Settings > API)"
+            )
+            raise RuntimeError(error_msg) from e
     
     return _supabase_client
 

@@ -10,8 +10,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { X, Sparkles } from "lucide-react"
+import { X, Sparkles, Loader2 } from "lucide-react"
 import { AirportAutocomplete } from "@/components/airport-autocomplete"
+import { DestinationDiscoveryModal } from "@/components/destination-discovery-modal"
+import { Textarea } from "@/components/ui/textarea"
+import { toast } from "@/hooks/use-toast"
+import { Badge } from "@/components/ui/badge"
+import type { DiscoveredDestination, DestinationDiscoveryInput } from "@/lib/types"
 
 // Using Next.js API routes - no backend needed
 
@@ -27,6 +32,7 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
   const [name, setName] = useState("")
   const [origins, setOrigins] = useState<string[]>([""])
   const [useAiDiscovery, setUseAiDiscovery] = useState(false)
+  const [aiDiscoveryPrompt, setAiDiscoveryPrompt] = useState("")
   const [destinations, setDestinations] = useState<string[]>([""])
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
@@ -35,6 +41,11 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
   const [budget, setBudget] = useState("")
   const [preferredWeekdays, setPreferredWeekdays] = useState<string[]>([])
   const [maxLayovers, setMaxLayovers] = useState("2")
+
+  // AI Discovery state
+  const [isDiscovering, setIsDiscovering] = useState(false)
+  const [discoveredDestinations, setDiscoveredDestinations] = useState<DiscoveredDestination[]>([])
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false)
 
   const addOrigin = () => {
     setOrigins([...origins, ""])
@@ -68,6 +79,96 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
     setPreferredWeekdays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]))
   }
 
+  const handleDiscoverDestinations = async () => {
+    const validOrigins = origins.filter((o) => o.trim() !== "")
+    if (validOrigins.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please add at least one origin airport first",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (!startDate || !endDate) {
+      toast({
+        title: "Error",
+        description: "Please select start and end dates first",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsDiscovering(true)
+    setError(null)
+
+    try {
+      const input: DestinationDiscoveryInput = {
+        origins: validOrigins,
+        dateRange: {
+          start: startDate,
+          end: endDate,
+        },
+        tripLengths: {
+          min: Number.parseInt(tripDurationMin),
+          max: Number.parseInt(tripDurationMax),
+        },
+        preferences: {
+          budget: budget ? Number.parseFloat(budget) : undefined,
+          preferred_weekdays: preferredWeekdays.length > 0 ? preferredWeekdays : undefined,
+          max_layovers: Number.parseInt(maxLayovers),
+        },
+        prompt: aiDiscoveryPrompt.trim() || undefined,
+      }
+
+      const response = await fetch("/api/ai/discover-destinations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(input),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+        throw new Error(errorData.error || "Could not discover destinations")
+      }
+
+      const data = await response.json()
+      setDiscoveredDestinations(data.destinations || [])
+      setShowDiscoveryModal(true)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Could not discover destinations. Please try again."
+      setError(errorMessage)
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    } finally {
+      setIsDiscovering(false)
+    }
+  }
+
+  const handleConfirmDestinations = (selectedAirports: string[]) => {
+    setDestinations(selectedAirports)
+    setShowDiscoveryModal(false)
+    toast({
+      title: "Destinations selected",
+      description: `Selected ${selectedAirports.length} destination${selectedAirports.length !== 1 ? "s" : ""}`,
+    })
+  }
+
+  // Reset destinations when toggling AI discovery off
+  const handleToggleAiDiscovery = (checked: boolean) => {
+    setUseAiDiscovery(checked)
+    if (!checked) {
+      setDestinations([""])
+      setAiDiscoveryPrompt("")
+      setDiscoveredDestinations([])
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
@@ -81,6 +182,11 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
     }
 
     const validDestinations = destinations.filter((d) => d.trim() !== "")
+    if (useAiDiscovery && validDestinations.length === 0) {
+      setError("Please discover and select destinations using AI Discovery")
+      setIsLoading(false)
+      return
+    }
     if (!useAiDiscovery && validDestinations.length === 0) {
       setError("Please add at least one destination or enable AI discovery")
       setIsLoading(false)
@@ -103,7 +209,7 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
           name,
           origin: validOrigins[0], // Keep for backward compatibility
           origins: validOrigins,
-          destinations: useAiDiscovery ? [] : validDestinations,
+          destinations: validDestinations, // Always save destinations, whether from AI discovery or manual input
           start_date: startDate,
           end_date: endDate,
           trip_duration_min: Number.parseInt(tripDurationMin),
@@ -119,46 +225,51 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
       if (insertError) throw insertError
 
       // Automatically trigger unified flight search and insights generation
-      try {
-        // Step 1: Trigger unified flight search (await to ensure it completes)
-        console.log("[Create Holiday] Starting automatic flight search...")
-        const searchResponse = await fetch(`/api/holidays/${data.id}/search-flights-unified`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        })
-        
-        const searchData = await searchResponse.json()
-        console.log("[Create Holiday] Auto-search response:", searchData)
-        
-        if (searchResponse.ok && searchData.success) {
-          // Wait for flights to be saved to database
-          if (searchData.metadata?.saved_to_db > 0) {
-            console.log(`[Create Holiday] Saved ${searchData.metadata.saved_to_db} flights, waiting for database...`)
-            // Wait longer to ensure database is ready
-            await new Promise((resolve) => setTimeout(resolve, 3000))
-          }
+      // Only if we have destinations (either from AI discovery or manual input)
+      if (validDestinations.length > 0) {
+        try {
+          // Step 1: Trigger unified flight search (await to ensure it completes)
+          console.log("[Create Holiday] Starting automatic flight search with destinations:", validDestinations)
+          const searchResponse = await fetch(`/api/holidays/${data.id}/search-flights-unified`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          })
           
-          // Step 2: Generate insights (only if flights were found)
-          try {
-            await fetch(`/api/holidays/${data.id}/generate-insights`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-            })
-          } catch (insightsError) {
-            // Insights generation is optional, don't fail the whole flow
-            console.warn("Failed to generate insights automatically:", insightsError)
+          const searchData = await searchResponse.json()
+          console.log("[Create Holiday] Auto-search response:", searchData)
+          
+          if (searchResponse.ok && searchData.success) {
+            // Wait for flights to be saved to database
+            if (searchData.metadata?.saved_to_db > 0) {
+              console.log(`[Create Holiday] Saved ${searchData.metadata.saved_to_db} flights, waiting for database...`)
+              // Wait longer to ensure database is ready
+              await new Promise((resolve) => setTimeout(resolve, 3000))
+            }
+            
+            // Step 2: Generate insights (only if flights were found)
+            try {
+              await fetch(`/api/holidays/${data.id}/generate-insights`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              })
+            } catch (insightsError) {
+              // Insights generation is optional, don't fail the whole flow
+              console.warn("Failed to generate insights automatically:", insightsError)
+            }
+          } else {
+            console.warn("[Create Holiday] Search completed but no flights found:", searchData.error || searchData.message)
           }
-        } else {
-          console.warn("[Create Holiday] Search completed but no flights found:", searchData.message)
+        } catch (autoSearchError) {
+          // Auto-search is best-effort, don't fail the holiday creation
+          // User can manually trigger search from the dashboard if needed
+          console.warn("Failed to automatically search flights:", autoSearchError)
         }
-      } catch (autoSearchError) {
-        // Auto-search is best-effort, don't fail the holiday creation
-        // User can manually trigger search from the dashboard if needed
-        console.warn("Failed to automatically search flights:", autoSearchError)
+      } else {
+        console.warn("[Create Holiday] No destinations to search for, skipping automatic flight search")
       }
 
       // Redirect to dashboard - page will auto-refresh to show results
@@ -225,10 +336,76 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
               </div>
               <p className="text-sm text-muted-foreground">Let AI suggest the best destinations for your budget</p>
             </div>
-            <Switch id="ai-discovery" checked={useAiDiscovery} onCheckedChange={setUseAiDiscovery} />
+            <Switch id="ai-discovery" checked={useAiDiscovery} onCheckedChange={handleToggleAiDiscovery} />
           </div>
 
-          {!useAiDiscovery && (
+          {useAiDiscovery ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ai-prompt">Describe what kind of holiday you're looking for (optional)</Label>
+                <Textarea
+                  id="ai-prompt"
+                  placeholder="e.g., Beach vacation with good nightlife, cultural cities in Europe, adventure travel in Asia..."
+                  value={aiDiscoveryPrompt}
+                  onChange={(e) => setAiDiscoveryPrompt(e.target.value)}
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Help AI understand your preferences - what type of experience are you seeking?
+                </p>
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleDiscoverDestinations}
+                disabled={isDiscovering || !startDate || !endDate}
+                className="w-full"
+              >
+                {isDiscovering ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Discovering destinations...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Discover Destinations
+                  </>
+                )}
+              </Button>
+
+              {destinations.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Selected Destinations</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {destinations.map((airport) => {
+                      const dest = discoveredDestinations.find((d) => d.airport === airport)
+                      return (
+                        <Badge key={airport} variant="secondary" className="text-sm py-1 px-3">
+                          {dest ? `${dest.city} (${airport})` : airport}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setDestinations([])
+                      setDiscoveredDestinations([])
+                    }}
+                  >
+                    Clear and discover again
+                  </Button>
+                </div>
+              )}
+
+              {error && destinations.length === 0 && (
+                <p className="text-sm text-destructive">{error}</p>
+              )}
+            </div>
+          ) : (
             <div className="space-y-2">
               <Label>Destination Airports</Label>
               {destinations.map((destination, index) => (
@@ -341,7 +518,15 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
             <p className="text-xs text-muted-foreground">Maximum number of stops you're willing to make</p>
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && !useAiDiscovery && <p className="text-sm text-destructive">{error}</p>}
+
+          <DestinationDiscoveryModal
+            open={showDiscoveryModal}
+            onOpenChange={setShowDiscoveryModal}
+            destinations={discoveredDestinations}
+            isLoading={isDiscovering}
+            onConfirm={handleConfirmDestinations}
+          />
 
           <div className="flex gap-4">
             <Button type="submit" disabled={isLoading} className="flex-1">

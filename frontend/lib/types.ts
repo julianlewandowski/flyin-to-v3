@@ -61,6 +61,29 @@ export interface AIDiscoveryResult {
   confidence?: number
 }
 
+export interface DestinationDiscoveryInput {
+  origins: string[]
+  dateRange: { start: string; end: string }
+  tripLengths: { min: number; max: number }
+  preferences?: {
+    budget?: number
+    preferred_weekdays?: string[]
+    max_layovers?: number
+  }
+  prompt?: string
+}
+
+export interface DiscoveredDestination {
+  city: string
+  country: string
+  airport: string
+  reason: string
+}
+
+export interface DestinationDiscoveryResult {
+  destinations: DiscoveredDestination[]
+}
+
 export interface BaggageInfo {
   cabin?: string
   checked?: string
