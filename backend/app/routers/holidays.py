@@ -96,6 +96,38 @@ async def delete_holiday(
     return {"message": "Holiday deleted successfully"}
 
 
+@router.get("/{holiday_id}/smart-insights")
+async def get_smart_insights(
+    holiday_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Client = Depends(get_db),
+):
+    """
+    Get AI-powered smart insights for a holiday.
+    Returns: price analysis histogram, alternative suggestions, and weather forecast.
+    """
+    # Fetch holiday
+    holiday_response = db.table("holidays").select("*").eq("id", holiday_id).eq("user_id", current_user.id).execute()
+    
+    if not holiday_response.data or len(holiday_response.data) == 0:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    
+    holiday = holiday_response.data[0]
+    
+    # Fetch flights
+    flights_response = db.table("flights").select("*").eq("holiday_id", holiday_id).order("price").execute()
+    flights = flights_response.data or []
+    
+    # Generate all insights
+    all_insights = await insights.get_all_insights(holiday, flights)
+    
+    return {
+        "success": True,
+        "holiday_id": holiday_id,
+        **all_insights,
+    }
+
+
 @router.get("/{holiday_id}")
 async def get_holiday(
     holiday_id: str,
@@ -426,36 +458,4 @@ async def generate_insights(
         "success": True,
         "insights": [{"type": i["insight_type"], "text": i["insight_text"]} for i in insights_data],
         "message": f"Generated {len(insights_data)} insights",
-    }
-
-
-@router.get("/{holiday_id}/smart-insights")
-async def get_smart_insights(
-    holiday_id: str,
-    current_user: User = Depends(get_current_user),
-    db: Client = Depends(get_db),
-):
-    """
-    Get AI-powered smart insights for a holiday.
-    Returns: price analysis histogram, alternative suggestions, and weather forecast.
-    """
-    # Fetch holiday
-    holiday_response = db.table("holidays").select("*").eq("id", holiday_id).eq("user_id", current_user.id).execute()
-    
-    if not holiday_response.data or len(holiday_response.data) == 0:
-        raise HTTPException(status_code=404, detail="Holiday not found")
-    
-    holiday = holiday_response.data[0]
-    
-    # Fetch flights
-    flights_response = db.table("flights").select("*").eq("holiday_id", holiday_id).order("price").execute()
-    flights = flights_response.data or []
-    
-    # Generate all insights
-    all_insights = await insights.get_all_insights(holiday, flights)
-    
-    return {
-        "success": True,
-        "holiday_id": holiday_id,
-        **all_insights,
     }
