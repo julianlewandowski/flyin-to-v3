@@ -13,6 +13,7 @@ import AiScoutButton from "@/components/ai-scout-button"
 import VerifyFlightsButton from "@/components/verify-flights-button"
 import UnifiedFlightSearchButton from "@/components/unified-flight-search-button"
 import AutoFlightSearch from "@/components/auto-flight-search"
+import SmartInsightsSection from "@/components/smart-insights"
 
 function getTimeAgo(dateString: string): string {
   if (!dateString) return "Never"
@@ -309,47 +310,9 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
 
-          {/* AI Insights Section */}
+          {/* Smart Insights Section */}
           <div>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">AI Insights</h2>
-              <GenerateInsightsButton holidayId={id} />
-            </div>
-
-            {insightData.length === 0 ? (
-              <Card className="border-dashed border-gray-400 bg-gray-200/50">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <div className="h-12 w-12 rounded-sm bg-gray-300 flex items-center justify-center mb-4">
-                    <TrendingDown className="h-6 w-6 text-gray-600" />
-                  </div>
-                  <p className="text-sm text-gray-700 text-center leading-relaxed">
-                    {flightData.length === 0
-                      ? "AI insights will appear here once we have flight data"
-                      : "Click 'Generate AI Insights' to get personalized recommendations"}
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {insightData.map((insight) => (
-                  <Card key={insight.id}>
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="capitalize bg-blue-500/10 text-blue-600 border-blue-500/20">
-                          {insight.insight_type.replace("_", " ")}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm leading-relaxed text-gray-700">{insight.insight_text}</p>
-                      <p className="text-xs text-gray-600 mt-3">
-                        {new Date(insight.created_at).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+            <SmartInsightsSection holidayId={id} hasFlights={flightData.length > 0} />
           </div>
         </div>
       </main>

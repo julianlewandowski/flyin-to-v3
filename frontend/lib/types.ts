@@ -203,3 +203,95 @@ export interface SerpApiFlightSearchParams {
 export interface SerpApiFlightResult {
   [key: string]: any
 }
+
+// Smart Insights Types
+export interface PriceHistogramData {
+  month: string
+  avg_price: number
+  min_price: number
+  flight_count: number
+  is_estimated?: boolean
+}
+
+export interface PriceAnalysis {
+  type: "price_analysis"
+  destination: string
+  origin: string
+  stats: {
+    average_price: number
+    min_price: number
+    max_price: number
+    total_flights: number
+  }
+  histogram: PriceHistogramData[]
+  best_month: PriceHistogramData | null
+  cheapest_flight: {
+    price: number
+    date: string
+    airline: string | null
+  }
+  ai_summary: string
+}
+
+export interface AlternativeRoute {
+  route: string
+  origin: string
+  destination: string
+  cheapest_price: number
+  original_price: number | null
+  savings: number
+  date: string
+  date_difference: string
+  airline: string | null
+  booking_link: string | null
+}
+
+export interface AlternativeSuggestions {
+  type: "alternative_suggestions"
+  original_dates: {
+    start: string
+    end: string
+  }
+  alternatives: AlternativeRoute[]
+  ai_suggestion: string
+}
+
+export interface WeatherDay {
+  date: string
+  day: string
+  temp_high: number
+  temp_low: number
+  condition: string
+  description: string
+  icon: string
+  humidity: number
+  wind_speed: number
+}
+
+export interface WeatherForecast {
+  type: "weather_forecast"
+  city: string
+  airport_code?: string
+  travel_dates: {
+    start: string
+    end: string
+  }
+  forecast: WeatherDay[]
+  summary: {
+    avg_temperature: number
+    conditions: string
+  }
+  ai_summary: string
+  packing_tips?: string[]
+  is_estimate?: boolean
+  error?: string
+}
+
+export interface SmartInsights {
+  success: boolean
+  holiday_id: string
+  price_analysis: PriceAnalysis
+  alternative_suggestions: AlternativeSuggestions
+  weather_forecast: WeatherForecast
+  generated_at: string
+}
