@@ -25,3 +25,5 @@ class DestinationDiscoveryResult(BaseModel):
     destinations: list[DestinationItem]
 
 
+
+

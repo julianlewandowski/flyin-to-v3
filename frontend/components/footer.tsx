@@ -43,18 +43,10 @@ export const Footer = () => {
               className="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors duration-200"
             >
               <Globe className="w-4 h-4" />
-              <span className="text-sm font-medium">My website</span>
+              <span className="text-sm font-medium">built by julian</span>
             </a>
 
-            <a
-              href="https://www.linkedin.com/in/julianlew/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors duration-200"
-            >
-              <Linkedin className="w-4 h-4" />
-              <span className="text-sm font-medium">LinkedIn</span>
-            </a>
+            
           </div>
         </div>
 
@@ -80,7 +72,7 @@ export const Footer = () => {
         {/* Additional Info */}
         <div className="mt-4 text-center">
           <p className="text-xs text-muted-foreground">
-            Flyin.to is a work in progress. Join the waitlist if you're interested in what we're building!
+            Flyin.to is in open beta. Works still under way. If you see any bugs, please send to support@flyin.to.
           </p>
         </div>
       </div>

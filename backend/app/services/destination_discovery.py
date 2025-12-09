@@ -229,3 +229,5 @@ Return JSON: {{"destinations": [{{"city": "...", "country": "...", "airport": "X
         return FALLBACK_DESTINATIONS[:5]
 
 
+
+

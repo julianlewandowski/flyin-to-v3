@@ -55,7 +55,7 @@ export const HeroSection = () => {
               </div>
               <div className="text-left">
                 <p className="text-2xl font-bold text-foreground">AI</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Deal Detection</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Flight Searches</p>
               </div>
               <div className="text-left">
                 <p className="text-2xl font-bold text-foreground">100%</p>

@@ -17,6 +17,7 @@ import SmartInsightsSection from "@/components/smart-insights"
 import PriceTrackingToggle from "@/components/price-tracking-toggle"
 import PriceDropAlert from "@/components/price-drop-alert"
 import GlobalPriceAlertBanner from "@/components/global-price-alert-banner"
+import { Footer } from "@/components/footer"
 
 function getTimeAgo(dateString: string): string {
   if (!dateString) return "Never"
@@ -103,7 +104,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
   const hasAiResults = holidayData.ai_discovery_results && holidayData.ai_discovery_results.length > 0
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Global Price Alert Banner for this holiday */}
       {holidayData.has_active_price_alert && (
         <GlobalPriceAlertBanner holidayId={id} className="fixed top-0 left-0 right-0 z-[60]" />
@@ -120,7 +121,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
       />
 
       {/* Main Content */}
-      <main className={`container mx-auto px-6 pb-16 animate-fade-in-up ${holidayData.has_active_price_alert ? "pt-24" : "pt-20"}`}>
+      <main className={`flex-1 container mx-auto px-6 pb-16 animate-fade-in-up ${holidayData.has_active_price_alert ? "pt-24" : "pt-20"}`}>
         <Link href="/dashboard">
           <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary mb-6 transition-colors duration-300">
             <ArrowLeft className="h-3 w-3" />
@@ -361,6 +362,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   )
 }

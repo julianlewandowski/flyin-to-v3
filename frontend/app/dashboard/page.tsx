@@ -9,6 +9,7 @@ import type { Holiday, PriceDropAlert } from "@/lib/types"
 import { fetchHolidaysForCurrentUser } from "@/lib/backend"
 import GlobalPriceAlertBanner, { InlinePriceAlertIndicator } from "@/components/global-price-alert-banner"
 import flyinLogo from "@/app/assets/flyin-color-logo.svg"
+import { Footer } from "@/components/footer"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -32,7 +33,7 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Global Price Alert Banner */}
       <GlobalPriceAlertBanner className="fixed top-0 left-0 right-0 z-[60]" />
       
@@ -59,7 +60,7 @@ export default async function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 pt-24 pb-16">
+      <main className="flex-1 container mx-auto px-6 pt-24 pb-16">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-6 animate-fade-in-up">
           <div>
             <h1 className="text-3xl md:text-5xl font-black mb-3 text-foreground tracking-tight">Your Holidays</h1>
@@ -188,6 +189,7 @@ export default async function DashboardPage() {
           </div>
         )}
       </main>
+      <Footer />
     </div>
   )
 }

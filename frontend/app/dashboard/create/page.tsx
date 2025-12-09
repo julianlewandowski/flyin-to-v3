@@ -4,6 +4,7 @@ import Link from "next/link"
 import CreateHolidayForm from "@/components/create-holiday-form"
 import flyinLogo from "@/app/assets/flyin-color-logo.svg"
 import { Button } from "@/components/ui/button"
+import { Footer } from "@/components/footer"
 
 export default async function CreateHolidayPage() {
   const supabase = await createClient()
@@ -18,7 +19,7 @@ export default async function CreateHolidayPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-border/50 supports-[backdrop-filter]:bg-white/60">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
@@ -41,7 +42,7 @@ export default async function CreateHolidayPage() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 pt-32 pb-16 max-w-3xl animate-fade-in-up">
+      <main className="flex-1 container mx-auto px-6 pt-32 pb-16 max-w-3xl animate-fade-in-up">
         <div className="mb-10 text-center">
           <h1 className="text-4xl md:text-5xl font-black mb-4 text-foreground tracking-tight">Create a New Holiday</h1>
           <p className="text-lg text-muted-foreground leading-relaxed max-w-xl mx-auto">
@@ -51,6 +52,7 @@ export default async function CreateHolidayPage() {
 
         <CreateHolidayForm userId={user.id} />
       </main>
+      <Footer />
     </div>
   )
 }
