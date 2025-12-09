@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { X, Sparkles, Loader2 } from "lucide-react"
+import { X, Sparkles, Loader2, Plane, Calendar, Wallet, Clock, Map } from "lucide-react"
 import { AirportAutocomplete } from "@/components/airport-autocomplete"
 import { DestinationDiscoveryModal } from "@/components/destination-discovery-modal"
 import { Textarea } from "@/components/ui/textarea"
@@ -251,171 +251,202 @@ export default function EditHolidayForm({ holiday }: EditHolidayFormProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Edit Holiday Details</CardTitle>
+    <Card className="border-border shadow-xl">
+      <CardHeader className="pb-8 border-b border-border/50">
+        <CardTitle className="text-2xl font-bold">Edit Holiday Details</CardTitle>
         <CardDescription>Update your travel preferences and parameters</CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="name">Holiday Name</Label>
+      <CardContent className="pt-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          
+          {/* Holiday Name */}
+          <div className="space-y-3">
+            <Label htmlFor="name" className="text-base font-semibold">Holiday Name</Label>
             <Input
               id="name"
-              placeholder="e.g., Summer Europe Trip"
+              placeholder="e.g., Summer Europe Trip 2025"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              className="h-12 text-lg"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Origin Airports</Label>
-            {origins.map((origin, index) => (
-              <div key={index} className="flex gap-2">
-                <AirportAutocomplete
-                  value={origin}
-                  onChange={(value) => updateOrigin(index, value)}
-                  placeholder="Search origin airport..."
-                  className="flex-1"
-                />
-                {origins.length > 1 && (
-                  <Button type="button" variant="outline" size="icon" onClick={() => removeOrigin(index)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
-            <Button type="button" variant="outline" onClick={addOrigin} className="w-full bg-transparent">
-              Add Another Origin
-            </Button>
-            <p className="text-xs text-muted-foreground">Add multiple departure airports for more flexibility</p>
-          </div>
-
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <Label htmlFor="ai-discovery" className="text-base font-medium">
-                  AI Destination Discovery
-                </Label>
-              </div>
-              <p className="text-sm text-muted-foreground">Let AI suggest the best destinations for your budget</p>
+          {/* Origins */}
+          <div className="space-y-3 p-4 bg-secondary/20 rounded-xl border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Plane className="h-4 w-4 text-primary rotate-90" />
+              <Label className="text-base font-semibold">Origin Airports</Label>
             </div>
-            <Switch id="ai-discovery" checked={useAiDiscovery} onCheckedChange={handleToggleAiDiscovery} />
-          </div>
-
-          {useAiDiscovery ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="ai-prompt">Describe what kind of holiday you're looking for (optional)</Label>
-                <Textarea
-                  id="ai-prompt"
-                  placeholder="e.g., Beach vacation with good nightlife, cultural cities in Europe, adventure travel in Asia..."
-                  value={aiDiscoveryPrompt}
-                  onChange={(e) => setAiDiscoveryPrompt(e.target.value)}
-                  rows={3}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Help AI understand your preferences - what type of experience are you seeking?
-                </p>
-              </div>
-
-              <Button
-                type="button"
-                onClick={handleDiscoverDestinations}
-                disabled={isDiscovering || !startDate || !endDate}
-                className="w-full"
-              >
-                {isDiscovering ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Discovering destinations...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Discover Destinations
-                  </>
-                )}
-              </Button>
-
-              {destinations.length > 0 && destinations[0] !== "" && (
-                <div className="space-y-2">
-                  <Label>Selected Destinations</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {destinations.map((airport) => {
-                      const dest = discoveredDestinations.find((d) => d.airport === airport)
-                      return (
-                        <Badge key={airport} variant="secondary" className="text-sm py-1 px-3">
-                          {dest ? `${dest.city} (${airport})` : airport}
-                        </Badge>
-                      )
-                    })}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setDestinations([])
-                      setDiscoveredDestinations([])
-                    }}
-                  >
-                    Clear and discover again
-                  </Button>
-                </div>
-              )}
-
-              {error && (destinations.length === 0 || destinations[0] === "") && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>Destination Airports</Label>
-              {destinations.map((destination, index) => (
+            <div className="space-y-3">
+              {origins.map((origin, index) => (
                 <div key={index} className="flex gap-2">
                   <AirportAutocomplete
-                    value={destination}
-                    onChange={(value) => updateDestination(index, value)}
-                    placeholder="Search destination airport..."
-                    className="flex-1"
+                    value={origin}
+                    onChange={(value) => updateOrigin(index, value)}
+                    placeholder="Search origin airport..."
+                    className="flex-1 h-11"
                   />
-                  {destinations.length > 1 && (
-                    <Button type="button" variant="outline" size="icon" onClick={() => removeDestination(index)}>
+                  {origins.length > 1 && (
+                    <Button type="button" variant="outline" size="icon" onClick={() => removeOrigin(index)} className="h-11 w-11">
                       <X className="h-4 w-4" />
                     </Button>
                   )}
                 </div>
               ))}
-              <Button type="button" variant="outline" onClick={addDestination} className="w-full bg-transparent">
-                Add Another Destination
+              <Button type="button" variant="outline" onClick={addOrigin} className="w-full bg-background/50 border-dashed border-border hover:bg-background hover:border-primary/50 text-muted-foreground hover:text-primary transition-all">
+                + Add Another Origin
               </Button>
-              <p className="text-xs text-muted-foreground">We'll track prices to all these destinations</p>
+              <p className="text-xs text-muted-foreground">Add multiple departure airports for more flexibility</p>
             </div>
-          )}
+          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="start-date">Start Date</Label>
+          {/* AI Toggle */}
+          <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 p-5">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <Label htmlFor="ai-discovery" className="text-base font-semibold text-foreground">
+                  AI Destination Discovery
+                </Label>
+              </div>
+              <p className="text-sm text-muted-foreground">Let AI suggest the best destinations based on your prompt</p>
+            </div>
+            <Switch id="ai-discovery" checked={useAiDiscovery} onCheckedChange={handleToggleAiDiscovery} className="scale-110" />
+          </div>
+
+          {/* Destinations (AI or Manual) */}
+          <div className="space-y-3 p-4 bg-secondary/20 rounded-xl border border-border/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Map className="h-4 w-4 text-primary" />
+              <Label className="text-base font-semibold">Destinations</Label>
+            </div>
+
+            {useAiDiscovery ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ai-prompt" className="font-medium">Describe your ideal trip (optional)</Label>
+                  <Textarea
+                    id="ai-prompt"
+                    placeholder="e.g., Beach vacation with good nightlife, cultural cities in Europe, adventure travel in Asia..."
+                    value={aiDiscoveryPrompt}
+                    onChange={(e) => setAiDiscoveryPrompt(e.target.value)}
+                    rows={4}
+                    className="resize-none bg-background text-base"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The more details you provide, the better recommendations we can give.
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleDiscoverDestinations}
+                  disabled={isDiscovering || !startDate || !endDate}
+                  className="w-full h-12 text-base shadow-lg shadow-primary/20"
+                >
+                  {isDiscovering ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Discovering destinations...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Discover Destinations with AI
+                    </>
+                  )}
+                </Button>
+
+                {destinations.length > 0 && destinations[0] !== "" && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="font-medium">Selected Destinations</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {destinations.map((airport) => {
+                        const dest = discoveredDestinations.find((d) => d.airport === airport)
+                        return (
+                          <Badge key={airport} variant="secondary" className="text-sm py-1.5 px-3 rounded-md bg-background border border-border">
+                            {dest ? `${dest.city} (${airport})` : airport}
+                          </Badge>
+                        )
+                      })}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setDestinations([])
+                        setDiscoveredDestinations([])
+                      }}
+                      className="text-muted-foreground hover:text-destructive text-xs"
+                    >
+                      Clear selection
+                    </Button>
+                  </div>
+                )}
+
+                {error && (destinations.length === 0 || destinations[0] === "") && (
+                  <p className="text-sm text-destructive font-medium bg-destructive/10 p-2 rounded">{error}</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {destinations.map((destination, index) => (
+                  <div key={index} className="flex gap-2">
+                    <AirportAutocomplete
+                      value={destination}
+                      onChange={(value) => updateDestination(index, value)}
+                      placeholder="Search destination airport..."
+                      className="flex-1 h-11"
+                    />
+                    {destinations.length > 1 && (
+                      <Button type="button" variant="outline" size="icon" onClick={() => removeDestination(index)} className="h-11 w-11">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" onClick={addDestination} className="w-full bg-background/50 border-dashed border-border hover:bg-background hover:border-primary/50 text-muted-foreground hover:text-primary transition-all">
+                  + Add Another Destination
+                </Button>
+                <p className="text-xs text-muted-foreground">We'll track prices to all these destinations</p>
+              </div>
+            )}
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-primary" />
+                <Label htmlFor="start-date" className="font-semibold">Start Date</Label>
+              </div>
               <Input
                 id="start-date"
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 required
+                className="h-11"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="end-date">End Date</Label>
-              <Input id="end-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-primary" />
+                <Label htmlFor="end-date" className="font-semibold">End Date</Label>
+              </div>
+              <Input id="end-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required className="h-11" />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="duration-min">Min Trip Duration (days)</Label>
+          {/* Duration */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <Label htmlFor="duration-min" className="font-semibold">Min Days</Label>
+              </div>
               <Input
                 id="duration-min"
                 type="number"
@@ -423,10 +454,14 @@ export default function EditHolidayForm({ holiday }: EditHolidayFormProps) {
                 onChange={(e) => setTripDurationMin(e.target.value)}
                 min="1"
                 required
+                className="h-11"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="duration-max">Max Trip Duration (days)</Label>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <Label htmlFor="duration-max" className="font-semibold">Max Days</Label>
+              </div>
               <Input
                 id="duration-max"
                 type="number"
@@ -434,26 +469,36 @@ export default function EditHolidayForm({ holiday }: EditHolidayFormProps) {
                 onChange={(e) => setTripDurationMax(e.target.value)}
                 min="1"
                 required
+                className="h-11"
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="budget">Budget (Optional)</Label>
-            <Input
-              id="budget"
-              type="number"
-              placeholder="e.g., 1000"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              min="0"
-              step="0.01"
-            />
+          {/* Budget */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-primary" />
+              <Label htmlFor="budget" className="font-semibold">Budget (Optional)</Label>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
+              <Input
+                id="budget"
+                type="number"
+                placeholder="1000"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+                min="0"
+                step="0.01"
+                className="h-11 pl-7"
+              />
+            </div>
             <p className="text-xs text-muted-foreground">Set a maximum budget to filter flight results</p>
           </div>
 
-          <div className="space-y-2">
-            <Label>Preferred Departure Days (Optional)</Label>
+          {/* Preferred Days */}
+          <div className="space-y-3">
+            <Label className="font-semibold">Preferred Departure Days (Optional)</Label>
             <div className="flex flex-wrap gap-2">
               {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
                 <Button
@@ -462,6 +507,7 @@ export default function EditHolidayForm({ holiday }: EditHolidayFormProps) {
                   variant={preferredWeekdays.includes(day) ? "default" : "outline"}
                   size="sm"
                   onClick={() => toggleWeekday(day)}
+                  className={`rounded-full transition-all ${preferredWeekdays.includes(day) ? "shadow-md" : "opacity-80 hover:opacity-100"}`}
                 >
                   {day.slice(0, 3)}
                 </Button>
@@ -470,8 +516,9 @@ export default function EditHolidayForm({ holiday }: EditHolidayFormProps) {
             <p className="text-xs text-muted-foreground">Select days you prefer to depart on</p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="layovers">Max Layovers</Label>
+          {/* Layovers */}
+          <div className="space-y-3">
+            <Label htmlFor="layovers" className="font-semibold">Max Layovers</Label>
             <Input
               id="layovers"
               type="number"
@@ -480,11 +527,12 @@ export default function EditHolidayForm({ holiday }: EditHolidayFormProps) {
               min="0"
               max="3"
               required
+              className="h-11"
             />
             <p className="text-xs text-muted-foreground">Maximum number of stops you're willing to make</p>
           </div>
 
-          {error && !useAiDiscovery && <p className="text-sm text-destructive">{error}</p>}
+          {error && !useAiDiscovery && <p className="text-sm text-destructive font-medium bg-destructive/10 p-3 rounded-lg border border-destructive/20">{error}</p>}
 
           <DestinationDiscoveryModal
             open={showDiscoveryModal}
@@ -494,17 +542,25 @@ export default function EditHolidayForm({ holiday }: EditHolidayFormProps) {
             onConfirm={handleConfirmDestinations}
           />
 
-          <div className="flex gap-4">
-            <Button type="submit" disabled={isLoading} className="flex-1">
-              {isLoading ? "Saving changes..." : "Save Changes"}
-            </Button>
+          <div className="pt-6 border-t border-border flex flex-col-reverse sm:flex-row gap-4">
             <Button
               type="button"
               variant="outline"
               onClick={() => router.push(`/dashboard/holidays/${holiday.id}`)}
               disabled={isLoading}
+              className="flex-1 h-12"
             >
               Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading} className="flex-1 h-12 text-lg shadow-lg shadow-primary/20">
+              {isLoading ? (
+                <>
+                  <Sparkles className="h-5 w-5 mr-2 animate-pulse" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
             </Button>
           </div>
         </form>
@@ -512,4 +568,3 @@ export default function EditHolidayForm({ holiday }: EditHolidayFormProps) {
     </Card>
   )
 }
-

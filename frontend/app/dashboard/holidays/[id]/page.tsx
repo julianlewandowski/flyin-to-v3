@@ -64,18 +64,6 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
 
   if (flightsError) {
     console.error("[Dashboard] Error fetching flights:", flightsError)
-  } else {
-    console.log(`[Dashboard] Fetched ${flights?.length || 0} flights for holiday ${id}`)
-    if (flights && flights.length > 0) {
-      console.log("[Dashboard] Sample flight:", {
-        id: flights[0].id,
-        origin: flights[0].origin,
-        destination: flights[0].destination,
-        price: flights[0].price,
-        deal_url: flights[0].deal_url,
-        provider: flights[0].provider,
-      })
-    }
   }
 
   // Fetch AI insights
@@ -115,7 +103,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
   const hasAiResults = holidayData.ai_discovery_results && holidayData.ai_discovery_results.length > 0
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-background">
       {/* Global Price Alert Banner for this holiday */}
       {holidayData.has_active_price_alert && (
         <GlobalPriceAlertBanner holidayId={id} className="fixed top-0 left-0 right-0 z-[60]" />
@@ -132,9 +120,9 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
       />
 
       {/* Main Content */}
-      <main className={`container mx-auto px-6 pb-16 ${holidayData.has_active_price_alert ? "pt-32" : "pt-24"}`}>
+      <main className={`container mx-auto px-6 pb-16 animate-fade-in-up ${holidayData.has_active_price_alert ? "pt-32" : "pt-24"}`}>
         <Link href="/dashboard">
-          <button className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 mb-8 transition-colors duration-300">
+          <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-8 transition-colors duration-300">
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
           </button>
@@ -142,7 +130,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
 
         {/* Price Drop Alert - Show prominently at the top if active */}
         {priceDropAlertData.length > 0 && (
-          <div className="mb-6 space-y-3">
+          <div className="mb-8 space-y-4 animate-float-slow">
             {priceDropAlertData.map((alert) => (
               <PriceDropAlert
                 key={alert.id}
@@ -159,12 +147,15 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         )}
 
         {/* Holiday Info */}
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex items-start justify-between">
+        <Card className="mb-8 border-border shadow-md">
+          <CardHeader className="pb-4 border-b border-border/50">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
               <div>
-                <CardTitle className="text-3xl md:text-4xl font-bold text-gray-900">{holidayData.name}</CardTitle>
-                <CardDescription className="text-gray-600 mt-2">Created on {new Date(holidayData.created_at).toLocaleDateString()}</CardDescription>
+                <CardTitle className="text-3xl md:text-4xl font-black text-foreground tracking-tight">{holidayData.name}</CardTitle>
+                <CardDescription className="text-muted-foreground mt-2 flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Created on {new Date(holidayData.created_at).toLocaleDateString()}
+                </CardDescription>
               </div>
               <div className="flex items-center gap-3">
                 {holidayData.use_ai_discovery && (
@@ -174,7 +165,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                   </Badge>
                 )}
                 <Link href={`/dashboard/holidays/${id}/edit`}>
-                  <Button variant="outline" size="sm" className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="flex items-center gap-2 rounded-full">
                     <Edit className="h-4 w-4" />
                     Edit
                   </Button>
@@ -182,50 +173,52 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div>
-                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                  <MapPin className="h-4 w-4" />
+          <CardContent className="pt-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <MapPin className="h-4 w-4 text-primary" />
                   {holidayData.origins && holidayData.origins.length > 1 ? "Origins" : "Origin"}
                 </div>
-                <p className="font-bold text-lg text-gray-900">
+                <p className="font-bold text-lg text-foreground">
                   {holidayData.origins ? holidayData.origins.join(", ") : holidayData.origin}
                 </p>
               </div>
-              <div>
-                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                  <MapPin className="h-4 w-4" />
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <MapPin className="h-4 w-4 text-primary" />
                   Destinations
                 </div>
-                <p className="font-bold text-lg text-gray-900">
+                <p className="font-bold text-lg text-foreground">
                   {holidayData.destinations && holidayData.destinations.length > 0
                     ? holidayData.destinations.join(", ")
                     : "No destinations set"}
                 </p>
               </div>
-              <div>
-                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                  <Calendar className="h-4 w-4" />
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Calendar className="h-4 w-4 text-primary" />
                   Travel Dates
                 </div>
-                <p className="font-bold text-gray-900">
-                  {new Date(holidayData.start_date).toLocaleDateString()} -{" "}
-                  {new Date(holidayData.end_date).toLocaleDateString()}
-                </p>
-                {holidayData.trip_duration_min && holidayData.trip_duration_max && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    {holidayData.trip_duration_min}-{holidayData.trip_duration_max} days
+                <div>
+                  <p className="font-bold text-foreground">
+                    {new Date(holidayData.start_date).toLocaleDateString()} -{" "}
+                    {new Date(holidayData.end_date).toLocaleDateString()}
                   </p>
-                )}
+                  {holidayData.trip_duration_min && holidayData.trip_duration_max && (
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      {holidayData.trip_duration_min}-{holidayData.trip_duration_max} days
+                    </p>
+                  )}
+                </div>
               </div>
               {holidayData.budget && (
-                <div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                    <DollarSign className="h-4 w-4" />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <DollarSign className="h-4 w-4 text-primary" />
                     Budget
                   </div>
-                  <p className="font-bold text-lg text-gray-900">€{holidayData.budget.toLocaleString()}</p>
+                  <p className="font-bold text-lg text-foreground">€{holidayData.budget.toLocaleString()}</p>
                 </div>
               )}
             </div>
@@ -233,7 +226,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         </Card>
 
         {/* Price Tracking Toggle */}
-        <div className="mb-8">
+        <div className="mb-10">
           <PriceTrackingToggle
             holidayId={id}
             initialEnabled={holidayData.price_tracking_enabled || false}
@@ -244,16 +237,16 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         </div>
 
         {needsAiScan && (
-          <Card className="mb-8 border-blue-500/50 bg-blue-500/5">
+          <Card className="mb-8 border-primary/20 bg-primary/5">
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-sm bg-blue-500 flex items-center justify-center flex-shrink-0">
-                    <Sparkles className="h-6 w-6 text-white" />
+                  <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
+                    <Sparkles className="h-6 w-6 text-primary-foreground" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900 text-lg">AI Route Discovery Ready</h3>
-                    <p className="text-sm text-gray-700 mt-1">
+                    <h3 className="font-bold text-foreground text-lg">AI Route Discovery Ready</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
                       Let AI scan the web for the best flight deals matching your criteria
                     </p>
                   </div>
@@ -265,20 +258,20 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         )}
 
         {hasAiResults && flightData.length === 0 && (
-          <Card className="mb-8 border-blue-500/50 bg-blue-500/5">
+          <Card className="mb-8 border-primary/20 bg-primary/5">
             <CardContent className="pt-6">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-sm bg-blue-500 flex items-center justify-center flex-shrink-0">
-                    <Plane className="h-6 w-6 text-white" />
+                  <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
+                    <Plane className="h-6 w-6 text-primary-foreground" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900 text-lg">{holidayData.ai_discovery_results?.length} Routes Discovered</h3>
-                    <p className="text-sm text-gray-700 mt-1">
+                    <h3 className="font-bold text-foreground text-lg">{holidayData.ai_discovery_results?.length} Routes Discovered</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
                       Verify these routes with live flight data from Airhob
                     </p>
                     {holidayData.last_ai_scan && (
-                      <p className="text-xs text-gray-600 mt-2">
+                      <p className="text-xs text-muted-foreground mt-2">
                         Last scan: {new Date(holidayData.last_ai_scan).toLocaleString()}
                       </p>
                     )}
@@ -291,9 +284,9 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         )}
 
         {alertData.length > 0 && (
-          <Card className="mb-8 border-orange-500/50 bg-orange-500/5">
+          <Card className="mb-8 border-orange-500/20 bg-orange-500/5">
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 font-bold text-gray-900">
+              <CardTitle className="text-lg flex items-center gap-2 font-bold text-foreground">
                 <TrendingDown className="h-5 w-5 text-orange-500" />
                 Recent Price Drops
               </CardTitle>
@@ -301,10 +294,10 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
             <CardContent>
               <div className="space-y-3">
                 {alertData.map((alert) => (
-                  <div key={alert.id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">{new Date(alert.created_at).toLocaleDateString()}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="line-through text-gray-500">€{alert.old_price}</span>
+                  <div key={alert.id} className="flex items-center justify-between text-sm p-3 bg-background/50 rounded-lg">
+                    <span className="text-muted-foreground">{new Date(alert.created_at).toLocaleDateString()}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="line-through text-muted-foreground">€{alert.old_price}</span>
                       <span className="font-bold text-orange-600">€{alert.new_price}</span>
                       <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
                         -{alert.price_drop_percent.toFixed(0)}%
@@ -322,9 +315,9 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
           <div id="flights-section" className="lg:col-span-2">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Flight Options</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">Flight Options</h2>
                 {flightData.length > 0 && (
-                  <p className="text-sm text-gray-600 mt-2">
+                  <p className="text-sm text-muted-foreground mt-2">
                     Last searched: {getTimeAgo(flightData[0]?.last_checked || flightData[0]?.created_at || "")}
                   </p>
                 )}
@@ -340,13 +333,13 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
             </div>
 
             {flightData.length === 0 ? (
-              <Card className="border-dashed border-gray-400 bg-gray-200/50">
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <div className="h-16 w-16 rounded-sm bg-gray-300 flex items-center justify-center mb-4">
-                    <Plane className="h-8 w-8 text-gray-600" />
+              <Card className="border-dashed border-border bg-secondary/30">
+                <CardContent className="flex flex-col items-center justify-center py-24 text-center">
+                  <div className="h-20 w-20 rounded-full bg-secondary flex items-center justify-center mb-6 text-muted-foreground animate-float-slow">
+                    <Plane className="h-10 w-10" />
                   </div>
-                  <h3 className="text-xl font-bold mb-2 text-gray-900">No flights found yet</h3>
-                  <p className="text-gray-700 text-center max-w-md leading-relaxed">
+                  <h3 className="text-xl font-bold mb-2 text-foreground">No flights found yet</h3>
+                  <p className="text-muted-foreground max-w-md leading-relaxed">
                     {holidayData.destinations && holidayData.destinations.length > 0
                       ? "Click 'Search Flights' above to find flights to your destinations"
                       : needsAiScan

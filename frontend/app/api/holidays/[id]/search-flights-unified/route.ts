@@ -1165,6 +1165,20 @@ export async function POST(
         // Ensure deal_url is set - use booking_link as fallback
         const dealUrl = offer.deal_url || offer.booking_link || null
         
+        // Calculate flight duration string
+        const totalMinutes = offer.total_duration_minutes || 0
+        const hours = Math.floor(totalMinutes / 60)
+        const mins = totalMinutes % 60
+        const flightDuration = totalMinutes > 0 ? `${hours}h ${mins}m` : undefined
+        
+        // Build extended flight details for storage
+        const flightDetails = offer.flight_details ? {
+          ...offer.flight_details,
+          // Add carbon emissions if available
+          carbon_emissions: offer.carbon_emissions ? 
+            `${offer.carbon_emissions.this_flight || 0}kg CO₂` : undefined,
+        } : undefined
+        
         return {
           holiday_id: id,
           origin,
@@ -1176,6 +1190,9 @@ export async function POST(
           booking_link: offer.booking_link || null,
           deal_url: dealUrl,
           provider: offer.provider || "serpapi",
+          layovers: offer.num_stops,
+          flight_duration: flightDuration,
+          flight_details: flightDetails,
           last_checked: new Date().toISOString(),
         }
       })

@@ -48,6 +48,78 @@ export interface Flight {
   flight_duration?: string
   last_checked: string
   created_at: string
+  // Extended flight data (stored as JSON)
+  flight_details?: FlightDetailsData | null
+}
+
+// Extended flight details stored as JSON
+export interface FlightDetailsData {
+  // Outbound leg
+  outbound_segments?: SegmentData[]
+  outbound_departure_time?: string
+  outbound_arrival_time?: string
+  outbound_duration_minutes?: number
+  
+  // Return leg  
+  return_segments?: SegmentData[]
+  return_departure_time?: string
+  return_arrival_time?: string
+  return_duration_minutes?: number
+  
+  // Layover details
+  layover_details?: LayoverData[]
+  
+  // Flight info
+  aircraft_type?: string
+  cabin_class?: string
+  fare_type?: string
+  marketing_carrier?: string
+  operating_carrier?: string
+  flight_numbers?: string[]
+  
+  // Terminals
+  departure_terminal?: string
+  arrival_terminal?: string
+  
+  // Pricing breakdown
+  base_fare?: number
+  taxes?: number
+  currency?: string
+  
+  // Additional info
+  carbon_emissions?: string
+  overnight?: boolean
+  total_duration_minutes?: number
+}
+
+export interface SegmentData {
+  segment_number: number
+  airline: string
+  airline_code?: string
+  airline_logo?: string
+  flight_number: string
+  aircraft?: string
+  departure_airport: string
+  departure_airport_name?: string
+  departure_terminal?: string
+  departure_time: string
+  arrival_airport: string
+  arrival_airport_name?: string
+  arrival_terminal?: string
+  arrival_time: string
+  duration_minutes: number
+  cabin_class?: string
+  overnight?: boolean
+  often_delayed?: boolean
+  legroom?: string
+  extensions?: string[]
+}
+
+export interface LayoverData {
+  airport: string
+  airport_name?: string
+  duration_minutes: number
+  overnight?: boolean
 }
 
 export interface AIInsight {
@@ -94,6 +166,7 @@ export interface BaggageInfo {
   cabin?: string
   checked?: string
 }
+
 
 export interface Alert {
   id: string
@@ -164,10 +237,19 @@ export interface FlightSegment {
   airline: {
     code: string
     name: string
+    logo?: string
   }
   flight_number: string
   duration_minutes: number
   aircraft?: string
+  // Extended segment data
+  travel_class?: string
+  legroom?: string
+  extensions?: string[]
+  often_delayed_by_over_30_min?: boolean
+  overnight?: boolean
+  departure_terminal?: string
+  arrival_terminal?: string
 }
 
 export interface Layover {
@@ -190,6 +272,14 @@ export interface FlightOffer {
   booking_link: string
   deal_url?: string | null
   notes: string[]
+  // Extended flight details for modal display
+  flight_details?: FlightDetailsData
+  // Raw carbon emissions data
+  carbon_emissions?: {
+    this_flight?: number
+    typical_for_this_route?: number
+    difference_percent?: number
+  }
 }
 
 export interface FlightPreferences {

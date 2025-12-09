@@ -77,11 +77,11 @@ export default function GlobalPriceAlertBanner({
 
   return (
     <div 
-      className={`bg-gradient-to-r from-emerald-500 to-green-500 text-white py-2 px-4 shadow-md ${className}`}
+      className={`bg-gradient-to-r from-emerald-600/95 to-teal-500/95 backdrop-blur-md text-white py-3 px-4 shadow-lg border-b border-emerald-500/30 animate-fade-in-up ${className}`}
     >
       <div className="container mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full bg-white/20 flex items-center justify-center animate-pulse-slow">
             <Bell className="h-4 w-4 text-white" />
           </div>
           <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export default function GlobalPriceAlertBanner({
               <Button
                 size="sm"
                 variant="secondary"
-                className="bg-white/20 hover:bg-white/30 text-white border-0 text-xs md:text-sm"
+                className="bg-white/20 hover:bg-white/30 text-white border-0 text-xs md:text-sm rounded-full backdrop-blur-sm"
               >
                 View Deals
                 <ChevronRight className="h-3 w-3 ml-1" />
@@ -120,7 +120,7 @@ export default function GlobalPriceAlertBanner({
               <Button
                 size="sm"
                 variant="secondary"
-                className="bg-white/20 hover:bg-white/30 text-white border-0 text-xs md:text-sm"
+                className="bg-white/20 hover:bg-white/30 text-white border-0 text-xs md:text-sm rounded-full backdrop-blur-sm"
               >
                 View All Alerts
                 <ChevronRight className="h-3 w-3 ml-1" />
@@ -131,7 +131,7 @@ export default function GlobalPriceAlertBanner({
             size="icon"
             variant="ghost"
             onClick={handleDismiss}
-            className="text-white/80 hover:text-white hover:bg-white/20 h-7 w-7"
+            className="text-white/80 hover:text-white hover:bg-white/20 h-8 w-8 rounded-full"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -167,8 +167,8 @@ export function InlinePriceAlertIndicator() {
 
   if (loading) {
     return (
-      <div className="h-5 w-5 flex items-center justify-center">
-        <Loader2 className="h-3 w-3 animate-spin text-gray-400" />
+      <div className="h-8 w-8 flex items-center justify-center">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -179,13 +179,12 @@ export function InlinePriceAlertIndicator() {
 
   return (
     <Link href="/dashboard" className="relative group">
-      <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center transition-colors group-hover:bg-emerald-200">
+      <div className="h-9 w-9 rounded-full bg-emerald-100 flex items-center justify-center transition-colors group-hover:bg-emerald-200">
         <Bell className="h-4 w-4 text-emerald-600" />
       </div>
-      <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center">
+      <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-white">
         {alertCount > 9 ? "9+" : alertCount}
       </span>
     </Link>
   )
 }
-

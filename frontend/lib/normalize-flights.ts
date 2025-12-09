@@ -5,7 +5,7 @@
  * This layer makes it easy to swap out SerpApi for Duffel/Amadeus later.
  */
 
-import type { FlightOffer, FlightSegment, Layover, AirportInfo, SerpApiFlightResult } from "./types"
+import type { FlightOffer, FlightSegment, Layover, AirportInfo, SerpApiFlightResult, FlightDetailsData, SegmentData, LayoverData } from "./types"
 import { extractDealUrl } from "./provider-deep-link"
 
 /**
@@ -63,12 +63,14 @@ function parseSegment(segment: any): FlightSegment | null {
     // Parse airline info - can be a string or object
     let airlineCode = ""
     let airlineName = "Unknown"
+    let airlineLogo = ""
     
     if (typeof segment.airline === "string") {
       airlineName = segment.airline
     } else if (segment.airline && typeof segment.airline === "object") {
       airlineCode = segment.airline.code || ""
       airlineName = segment.airline.name || "Unknown"
+      airlineLogo = segment.airline.logo || segment.airline_logo || ""
     } else {
       airlineName = segment.airline_name || segment.airline || "Unknown"
       airlineCode = segment.airline_code || ""
@@ -82,14 +84,63 @@ function parseSegment(segment: any): FlightSegment | null {
       airline: {
         code: airlineCode,
         name: airlineName,
+        logo: airlineLogo,
       },
       flight_number: segment.flight_number || segment.number || "",
       duration_minutes: duration_minutes || 0,
       aircraft: segment.airplane || segment.aircraft || segment.plane || undefined,
+      // Extended data
+      travel_class: segment.travel_class || undefined,
+      legroom: segment.legroom || undefined,
+      extensions: segment.extensions || undefined,
+      often_delayed_by_over_30_min: segment.often_delayed_by_over_30_min || false,
+      overnight: segment.overnight || false,
+      departure_terminal: departureAirport.terminal || undefined,
+      arrival_terminal: arrivalAirport.terminal || undefined,
     }
   } catch (error) {
     console.error("[Normalize] Error parsing segment:", error, "Segment:", segment)
     return null
+  }
+}
+
+/**
+ * Convert FlightSegment to SegmentData for storage
+ */
+function segmentToSegmentData(segment: FlightSegment, index: number): SegmentData {
+  return {
+    segment_number: index + 1,
+    airline: segment.airline.name,
+    airline_code: segment.airline.code,
+    airline_logo: (segment.airline as any).logo || undefined,
+    flight_number: segment.flight_number,
+    aircraft: segment.aircraft,
+    departure_airport: segment.from.code,
+    departure_airport_name: segment.from.city ? `${segment.from.city}, ${segment.from.country}` : undefined,
+    departure_terminal: (segment as any).departure_terminal,
+    departure_time: segment.departure,
+    arrival_airport: segment.to.code,
+    arrival_airport_name: segment.to.city ? `${segment.to.city}, ${segment.to.country}` : undefined,
+    arrival_terminal: (segment as any).arrival_terminal,
+    arrival_time: segment.arrival,
+    duration_minutes: segment.duration_minutes,
+    cabin_class: (segment as any).travel_class,
+    overnight: (segment as any).overnight,
+    often_delayed: (segment as any).often_delayed_by_over_30_min,
+    legroom: (segment as any).legroom,
+    extensions: (segment as any).extensions,
+  }
+}
+
+/**
+ * Convert Layover to LayoverData for storage
+ */
+function layoverToLayoverData(layover: Layover, serpLayover?: any): LayoverData {
+  return {
+    airport: layover.airport,
+    airport_name: serpLayover?.name || undefined,
+    duration_minutes: layover.duration_minutes,
+    overnight: serpLayover?.overnight || false,
   }
 }
 
@@ -305,6 +356,49 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
     }
     const id = `${finalProvider}_${Math.abs(hash).toString(36)}_${departureDateTime.split("T")[0]}`
 
+    // Build extended flight details
+    const flight_details: FlightDetailsData = {
+      // Outbound segments (all segments for one-way, first half for round-trip)
+      outbound_segments: segments.map((seg, i) => segmentToSegmentData(seg, i)),
+      outbound_departure_time: firstSegment?.departure,
+      outbound_arrival_time: lastSegment?.arrival,
+      outbound_duration_minutes: total_duration_minutes,
+      
+      // Layover details with extended info
+      layover_details: layovers.map((lay, i) => 
+        layoverToLayoverData(lay, serpResult.layovers?.[i])
+      ),
+      
+      // Flight info from first segment
+      aircraft_type: firstSegment?.aircraft || serpResult.airplane || undefined,
+      cabin_class: classStr,
+      fare_type: serpResult.fare_type || serpResult.type || undefined,
+      marketing_carrier: firstSegment?.airline?.name,
+      operating_carrier: serpResult.operated_by || serpResult.operating_carrier || undefined,
+      flight_numbers: segments.map(s => s.flight_number).filter(Boolean),
+      
+      // Terminals from first and last segment
+      departure_terminal: (firstSegment as any)?.departure_terminal,
+      arrival_terminal: (lastSegment as any)?.arrival_terminal,
+      
+      // Currency
+      currency: currency,
+      
+      // Check for overnight flight
+      overnight: segments.some((s: any) => s.overnight) || serpResult.overnight || false,
+      total_duration_minutes: total_duration_minutes,
+    }
+
+    // Extract carbon emissions if available
+    let carbon_emissions = undefined
+    if (serpResult.carbon_emissions) {
+      carbon_emissions = {
+        this_flight: serpResult.carbon_emissions.this_flight,
+        typical_for_this_route: serpResult.carbon_emissions.typical_for_this_route,
+        difference_percent: serpResult.carbon_emissions.difference_percent,
+      }
+    }
+
     return {
       id,
       provider: finalProvider,
@@ -320,6 +414,8 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
       booking_link,
       deal_url: finalDealUrl,
       notes,
+      flight_details,
+      carbon_emissions,
     }
   } catch (error) {
     console.error("[Normalize] Error normalizing flight offer:", error)
