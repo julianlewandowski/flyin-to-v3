@@ -66,8 +66,8 @@ export default async function DashboardPage() {
             <p className="text-base md:text-lg text-muted-foreground leading-relaxed">Track and manage your flight searches</p>
           </div>
           <Link href="/dashboard/create">
-            <Button size="lg" className="w-full md:w-auto shadow-lg shadow-blue-500/20">
-              <Plus className="h-5 w-5 mr-2" />
+            <Button size="default" className="w-full md:w-auto font-semibold">
+              <Plus className="h-4 w-4 mr-2" />
               Create Holiday
             </Button>
           </Link>

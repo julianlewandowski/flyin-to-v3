@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export const HeroSection = () => {
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-background pt-20 lg:pt-0">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background pt-32 lg:pt-20">
       {/* Background Decorative Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Soft Gradients */}
@@ -15,7 +15,7 @@ export const HeroSection = () => {
         <div className="absolute bottom-[0%] left-[20%] w-[30%] h-[30%] bg-indigo-500/10 rounded-full blur-3xl animate-float-fast" />
         
         {/* Grid Pattern */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808030_1px,transparent_1px),linear-gradient(to_bottom,#80808030_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
       </div>
 
       <div className="container relative mx-auto px-6 z-10">
@@ -23,30 +23,22 @@ export const HeroSection = () => {
           
           {/* Left Column: Content */}
           <div className="text-center lg:text-left space-y-8 animate-fade-in-up">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-blue-600 text-sm font-medium">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-              </span>
-              Now tracking 10,000+ routes daily
-            </div>
-            
             <div className="space-y-4">
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-foreground leading-[1.1]">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground leading-[1.1]">
                 Stop Searching. <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
                   Start Flyin.
                 </span>
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-xl mx-auto lg:mx-0">
-                The AI-powered flight tracker that finds price drops, mistake fares, and hidden deals so you don't have to.
+                The AI-powered tool for flexible flight searching that scores flight deals based on your preferences and tracks price drops.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
               <Link href="/dashboard">
-                <Button size="lg" className="h-14 px-8 text-lg rounded-full shadow-lg shadow-blue-500/20 bg-primary hover:bg-blue-700 transition-all duration-300 hover:scale-105">
-                  Start Exploring Deals
+                <Button size="lg" className="h-14 px-8 text-lg rounded-full shadow-lg shadow-blue-500/20 transition-all duration-300 hover:scale-105">
+                  Try it now
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
@@ -104,6 +96,28 @@ export const HeroSection = () => {
                   </div>
                 </div>
 
+                {/* Integrated Alerts */}
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  <div className="flex-1 bg-green-50 p-3 rounded-xl border border-green-100 flex items-center gap-3">
+                     <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
+                      <ArrowRight className="h-4 w-4 rotate-45" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">Price Drop!</p>
+                      <p className="text-[10px] text-slate-600">Bali down €120</p>
+                    </div>
+                  </div>
+                  <div className="flex-1 bg-orange-50 p-3 rounded-xl border border-orange-100 flex items-center gap-3">
+                     <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
+                      <BarChart3 className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">€450 Saved</p>
+                      <p className="text-[10px] text-slate-600">This month</p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Holiday Cards Row */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-3">
@@ -144,32 +158,6 @@ export const HeroSection = () => {
                   {[40, 60, 45, 70, 50, 80, 65, 90].map((h, i) => (
                     <div key={i} className="w-full bg-blue-200 rounded-t-sm hover:bg-blue-500 transition-colors" style={{ height: `${h}%` }} />
                   ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Floating Notification Card */}
-            <div className="absolute -right-8 top-20 bg-white p-4 rounded-xl shadow-xl border border-border w-64 animate-float-medium z-20">
-              <div className="flex gap-3">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shrink-0">
-                  <ArrowRight className="h-5 w-5 rotate-45" />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-slate-900">Price Drop Alert!</p>
-                  <p className="text-xs text-slate-500">Flight to Bali dropped by €120</p>
-                </div>
-              </div>
-            </div>
-
-             {/* Floating Stats Card */}
-             <div className="absolute -left-8 bottom-20 bg-white p-4 rounded-xl shadow-xl border border-border w-56 animate-float-fast z-20">
-              <div className="flex gap-3 items-center">
-                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
-                  <BarChart3 className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-slate-900">€450</p>
-                  <p className="text-xs text-slate-500">Saved this month</p>
                 </div>
               </div>
             </div>

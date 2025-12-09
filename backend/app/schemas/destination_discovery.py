@@ -24,3 +24,4 @@ class DestinationDiscoveryResult(BaseModel):
     """Response schema for destination discovery."""
     destinations: list[DestinationItem]
 
+

@@ -120,10 +120,10 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
       />
 
       {/* Main Content */}
-      <main className={`container mx-auto px-6 pb-16 animate-fade-in-up ${holidayData.has_active_price_alert ? "pt-32" : "pt-24"}`}>
+      <main className={`container mx-auto px-6 pb-16 animate-fade-in-up ${holidayData.has_active_price_alert ? "pt-24" : "pt-20"}`}>
         <Link href="/dashboard">
-          <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary mb-8 transition-colors duration-300">
-            <ArrowLeft className="h-4 w-4" />
+          <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary mb-6 transition-colors duration-300">
+            <ArrowLeft className="h-3 w-3" />
             Back to Dashboard
           </button>
         </Link>
@@ -147,78 +147,78 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         )}
 
         {/* Holiday Info */}
-        <Card className="mb-8 border-border shadow-md">
-          <CardHeader className="pb-4 border-b border-border/50">
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <Card className="mb-6 border-border shadow-sm">
+          <CardHeader className="pb-3 border-b border-border/50">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
-                <CardTitle className="text-3xl md:text-4xl font-black text-foreground tracking-tight">{holidayData.name}</CardTitle>
-                <CardDescription className="text-muted-foreground mt-2 flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
+                <CardTitle className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">{holidayData.name}</CardTitle>
+                <CardDescription className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
+                  <Calendar className="h-3 w-3" />
                   Created on {new Date(holidayData.created_at).toLocaleDateString()}
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {holidayData.use_ai_discovery && (
-                  <Badge variant="secondary" className="flex items-center gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20">
+                  <Badge variant="secondary" className="flex items-center gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs">
                     <Sparkles className="h-3 w-3" />
                     AI Discovery
                   </Badge>
                 )}
                 <Link href={`/dashboard/holidays/${id}/edit`}>
-                  <Button variant="outline" size="sm" className="flex items-center gap-2 rounded-full">
-                    <Edit className="h-4 w-4" />
+                  <Button variant="outline" size="sm" className="h-8 text-xs flex items-center gap-1.5 rounded-full">
+                    <Edit className="h-3 w-3" />
                     Edit
                   </Button>
                 </Link>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <MapPin className="h-4 w-4 text-primary" />
+          <CardContent className="pt-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <MapPin className="h-3 w-3 text-primary" />
                   {holidayData.origins && holidayData.origins.length > 1 ? "Origins" : "Origin"}
                 </div>
-                <p className="font-bold text-lg text-foreground">
+                <p className="font-semibold text-base text-foreground">
                   {holidayData.origins ? holidayData.origins.join(", ") : holidayData.origin}
                 </p>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <MapPin className="h-4 w-4 text-primary" />
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <MapPin className="h-3 w-3 text-primary" />
                   Destinations
                 </div>
-                <p className="font-bold text-lg text-foreground">
+                <p className="font-semibold text-base text-foreground">
                   {holidayData.destinations && holidayData.destinations.length > 0
                     ? holidayData.destinations.join(", ")
                     : "No destinations set"}
                 </p>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Calendar className="h-4 w-4 text-primary" />
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Calendar className="h-3 w-3 text-primary" />
                   Travel Dates
                 </div>
                 <div>
-                  <p className="font-bold text-foreground">
+                  <p className="font-semibold text-base text-foreground">
                     {new Date(holidayData.start_date).toLocaleDateString()} -{" "}
                     {new Date(holidayData.end_date).toLocaleDateString()}
                   </p>
                   {holidayData.trip_duration_min && holidayData.trip_duration_max && (
-                    <p className="text-sm text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {holidayData.trip_duration_min}-{holidayData.trip_duration_max} days
                     </p>
                   )}
                 </div>
               </div>
               {holidayData.budget && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <DollarSign className="h-4 w-4 text-primary" />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <DollarSign className="h-3 w-3 text-primary" />
                     Budget
                   </div>
-                  <p className="font-bold text-lg text-foreground">€{holidayData.budget.toLocaleString()}</p>
+                  <p className="font-semibold text-base text-foreground">€{holidayData.budget.toLocaleString()}</p>
                 </div>
               )}
             </div>
@@ -226,7 +226,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
         </Card>
 
         {/* Price Tracking Toggle */}
-        <div className="mb-10">
+        <div className="mb-6">
           <PriceTrackingToggle
             holidayId={id}
             initialEnabled={holidayData.price_tracking_enabled || false}
@@ -310,14 +310,14 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
           </Card>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6">
           {/* Flights Section */}
           <div id="flights-section" className="lg:col-span-2">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-3">
               <div>
-                <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight">Flight Options</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">Flight Options</h2>
                 {flightData.length > 0 && (
-                  <p className="text-sm text-muted-foreground mt-2">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Last searched: {getTimeAgo(flightData[0]?.last_checked || flightData[0]?.created_at || "")}
                   </p>
                 )}

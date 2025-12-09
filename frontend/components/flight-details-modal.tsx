@@ -573,7 +573,7 @@ export default function FlightDetailsModal({
                 rel="noopener noreferrer"
                 className="flex-shrink-0"
               >
-                <Button size="lg" className="gap-2 bg-blue-600 hover:bg-blue-700 shadow-lg">
+                <Button size="lg" className="gap-2 shadow-lg">
                   Book Now — €{flight.price.toLocaleString()}
                   <ExternalLink className="h-4 w-4" />
                 </Button>

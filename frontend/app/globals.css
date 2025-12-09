@@ -15,7 +15,7 @@
   --popover-foreground: 15 23 42; /* slate-900 */
   
   /* Primary: Vibrant Tech Blue */
-  --primary: 37 99 235; /* blue-600 */
+  --primary: 59 130 246; /* blue-500 - Lighter blue */
   --primary-foreground: 255 255 255; /* white */
   
   --secondary: 241 245 249; /* slate-100 */
@@ -114,6 +114,9 @@
 }
 
 @layer base {
+  html {
+    font-size: 14px; /* Scale down entire site for a more compact, pro-tool feel */
+  }
   * {
     @apply border-border outline-ring/50;
   }
@@ -125,17 +128,17 @@
 /* Landing Page Style Animations */
 @keyframes float-slow {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(20px, -20px) scale(1.05); }
+  50% { transform: translate(5px, -5px) scale(1.01); }
 }
 
 @keyframes float-medium {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(-15px, 15px) scale(1.03); }
+  50% { transform: translate(-3px, 3px) scale(1.01); }
 }
 
 @keyframes float-fast {
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(10px, -10px) scale(1.02); }
+  50% { transform: translate(2px, -2px) scale(1.005); }
 }
 
 @keyframes pulse-slow {

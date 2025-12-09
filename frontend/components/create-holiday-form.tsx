@@ -328,7 +328,7 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
                   )}
                 </div>
               ))}
-              <Button type="button" variant="outline" onClick={addOrigin} className="w-full bg-background/50 border-dashed border-border hover:bg-background hover:border-primary/50 text-muted-foreground hover:text-primary transition-all">
+              <Button type="button" variant="outline" onClick={addOrigin} className="w-full border-dashed">
                 + Add Another Origin
               </Button>
               <p className="text-xs text-muted-foreground">Add multiple departure airports for more flexibility</p>
@@ -441,7 +441,7 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
                     )}
                   </div>
                 ))}
-                <Button type="button" variant="outline" onClick={addDestination} className="w-full bg-background/50 border-dashed border-border hover:bg-background hover:border-primary/50 text-muted-foreground hover:text-primary transition-all">
+                <Button type="button" variant="outline" onClick={addDestination} className="w-full border-dashed">
                   + Add Another Destination
                 </Button>
                 <p className="text-xs text-muted-foreground">We'll track prices to all these destinations</p>

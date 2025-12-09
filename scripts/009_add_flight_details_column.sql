@@ -27,3 +27,4 @@ CREATE INDEX IF NOT EXISTS flights_flight_details_idx
 -- WHERE table_name = 'flights' AND column_name = 'flight_details';
 -- ============================================================================
 
+

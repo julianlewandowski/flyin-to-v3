@@ -228,3 +228,4 @@ Return JSON: {{"destinations": [{{"city": "...", "country": "...", "airport": "X
         print(f"[Destination Discovery] Retry failed: {e}")
         return FALLBACK_DESTINATIONS[:5]
 
+
