@@ -9,8 +9,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { searchFlightsParallel, generateSearchParams } from "@/lib/serpapi"
-import type { SerpApiFlightSearchParams } from "@/lib/types"
-import { normalizeSerpApiResponse, normalizeFlightOffers } from "@/lib/normalize-flights"
+import type { SerpApiFlightSearchParams, FlightOffer } from "@/lib/types"
+import { normalizeSerpApiResponse, normalizeFlightOffers, type SearchContext } from "@/lib/normalize-flights"
 import { extractPreferences } from "@/lib/llm-preferences"
 import { scoreFlightOffers } from "@/lib/llm-scorer"
 import { optimizeFlightDates } from "@/lib/llm-date-optimizer"
@@ -817,9 +817,13 @@ export async function POST(
       )
     }
 
-    // Collect all raw results
+    // Collect all raw results and normalize per-search with correct return dates
     const allRawResults: any[] = []
+    let normalizedOffers: FlightOffer[] = []
     const errors: Array<{ params: any; error: string }> = []
+    
+    // Get currency from search params (should be consistent across all searches)
+    const requestCurrency = searchParamsArray[0]?.currency || "EUR"
 
     for (const result of searchResults) {
       if (result.error) {
@@ -879,6 +883,17 @@ export async function POST(
           })
           
           allRawResults.push(...flightsWithSource)
+          
+          // Normalize this batch with the correct search context (return date)
+          // This ensures Google Flights URLs have the correct return date for round-trip searches
+          const searchContext: SearchContext = {
+            outbound_date: result.params.outbound_date,
+            return_date: result.params.return_date,
+          }
+          console.log("[Unified Search] Normalizing batch with search context:", searchContext)
+          
+          const batchOffers = normalizeFlightOffers(flightsWithSource, "serpapi", requestCurrency, searchContext)
+          normalizedOffers.push(...batchOffers)
         } else {
           console.warn("[Unified Search] No flights in result for route:", result.params.departure_id, "->", result.params.arrival_id)
           console.warn("[Unified Search] Result data:", JSON.stringify(result.result, null, 2).substring(0, 500))
@@ -889,19 +904,16 @@ export async function POST(
     }
 
     console.log(`[Unified Search] Retrieved ${allRawResults.length} raw flight results`)
+    console.log(`[Unified Search] Normalized ${normalizedOffers.length} offers with correct return dates`)
     if (errors.length > 0) {
       console.warn("[Unified Search] Some searches failed:", errors.length)
     }
 
     // ========================================================================
-    // STEP 5: Normalization
+    // STEP 5: Normalization (already done per-batch above)
     // ========================================================================
-    console.log("[Unified Search] STEP 5: Normalizing results...")
+    console.log("[Unified Search] STEP 5: Normalization complete (done per-batch with correct return dates)")
     console.log("[Unified Search] Sample raw result structure:", allRawResults.length > 0 ? JSON.stringify(allRawResults[0], null, 2).substring(0, 1500) : "No results")
-    
-    // Get currency from search params (should be consistent across all searches)
-    const requestCurrency = searchParamsArray[0]?.currency || "EUR"
-    let normalizedOffers = normalizeFlightOffers(allRawResults, "serpapi", requestCurrency)
     
     // Filter out flights that don't match trip duration requirements
     if (holidayData.trip_duration_min || holidayData.trip_duration_max) {

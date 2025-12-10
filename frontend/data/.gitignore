@@ -1,0 +1,8 @@
+# Ignore CSV files (they can be large)
+*.csv
+
+# But keep the README
+!README.md
+
+
+

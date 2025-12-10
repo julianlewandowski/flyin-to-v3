@@ -6,7 +6,8 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "convert-airports": "node scripts/convert-airports-csv.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.77",

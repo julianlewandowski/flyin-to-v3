@@ -170,9 +170,21 @@ function extractLayovers(segments: FlightSegment[]): Layover[] {
 }
 
 /**
- * Normalize a single SerpApi flight result to FlightOffer
+ * Search context for normalization - contains dates from the original search
  */
-export function normalizeFlightOffer(serpResult: any, provider: string = "serpapi", defaultCurrency: string = "USD"): FlightOffer | null {
+export interface SearchContext {
+  outbound_date?: string
+  return_date?: string
+}
+
+/**
+ * Normalize a single SerpApi flight result to FlightOffer
+ * @param serpResult - Raw SerpAPI result
+ * @param provider - Provider name
+ * @param defaultCurrency - Default currency code
+ * @param searchContext - Optional search context with the actual search dates (for proper URL generation)
+ */
+export function normalizeFlightOffer(serpResult: any, provider: string = "serpapi", defaultCurrency: string = "USD", searchContext?: SearchContext): FlightOffer | null {
   try {
     // SerpApi response structure based on documentation:
     // Each flight offer has: flights[], price (number), layovers[], total_duration, etc.
@@ -269,13 +281,15 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
     const origin = firstSegment?.from?.code || ""
     const destination = lastSegment?.to?.code || ""
     
-    // Extract dates from segments
+    // Extract outbound date from first segment departure
     const outboundDate = firstSegment?.departure 
       ? new Date(firstSegment.departure).toISOString().split("T")[0]
       : ""
-    const returnDate = lastSegment?.arrival
-      ? new Date(lastSegment.arrival).toISOString().split("T")[0]
-      : ""
+    
+    // IMPORTANT: Use the search context return_date (actual trip return date) instead of 
+    // lastSegment?.arrival (which is just the arrival time of the outbound flight)
+    // This ensures Google Flights URLs have the correct return date for round-trip searches
+    const returnDate = searchContext?.return_date || ""
 
     // Get booking link - SerpApi provides booking_token, need to construct URL or use departure_token
     // Check for booking_token first (most reliable for Google Flights)
@@ -426,11 +440,18 @@ export function normalizeFlightOffer(serpResult: any, provider: string = "serpap
 /**
  * Normalize multiple SerpApi results into FlightOffers
  * Filters out invalid offers
+ * @param serpResults - Array of raw SerpAPI results
+ * @param provider - Provider name
+ * @param defaultCurrency - Default currency code
+ * @param searchContext - Optional search context with actual search dates (for proper URL generation)
  */
-export function normalizeFlightOffers(serpResults: any[], provider: string = "serpapi", defaultCurrency: string = "USD"): FlightOffer[] {
+export function normalizeFlightOffers(serpResults: any[], provider: string = "serpapi", defaultCurrency: string = "USD", searchContext?: SearchContext): FlightOffer[] {
   const offers: FlightOffer[] = []
 
   console.log(`[Normalize] Normalizing ${serpResults.length} raw results`)
+  if (searchContext) {
+    console.log(`[Normalize] Using search context: outbound=${searchContext.outbound_date}, return=${searchContext.return_date}`)
+  }
 
   for (let i = 0; i < serpResults.length; i++) {
     const result = serpResults[i]
@@ -448,7 +469,7 @@ export function normalizeFlightOffers(serpResults: any[], provider: string = "se
       console.log(`[Normalize] First result full structure:`, JSON.stringify(result, null, 2).substring(0, 2000))
     }
     
-    const offer = normalizeFlightOffer(result, provider, defaultCurrency)
+    const offer = normalizeFlightOffer(result, provider, defaultCurrency, searchContext)
     if (offer) {
       offers.push(offer)
       console.log(`[Normalize] Successfully normalized offer ${i + 1}: ${offer.segments.length} segments, price: ${offer.price.total} ${offer.price.currency}`)

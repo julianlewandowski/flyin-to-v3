@@ -228,3 +228,5 @@ COMMENT ON COLUMN public.flights.provider IS 'Provider name (e.g., Turkish Airli
 
 
 
+
+
