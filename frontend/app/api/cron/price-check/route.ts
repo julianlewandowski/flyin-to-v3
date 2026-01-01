@@ -1,14 +1,12 @@
 /**
  * Vercel Cron Job - Daily Price Check
  * 
- * This endpoint is called by Vercel Cron once per day.
+ * This endpoint is called by Vercel Cron once per day at 8 AM UTC.
  * Configure in vercel.json with the cron schedule.
  */
 
 import { NextResponse } from "next/server"
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
-const CRON_SECRET = process.env.CRON_SECRET
+import { runDailyPriceCheck } from "@/lib/services/price-tracker"
 
 export async function GET(request: Request) {
   // Verify this is a legitimate cron request from Vercel
@@ -25,31 +23,19 @@ export async function GET(request: Request) {
   console.log("[Cron] Starting daily price check...")
 
   try {
-    // Call the backend price tracking cron endpoint
-    const response = await fetch(`${BACKEND_URL}/price-tracking/cron/daily-check`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Cron-Secret": CRON_SECRET || "",
-      },
-    })
+    const result = await runDailyPriceCheck()
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      console.error("[Cron] Backend returned error:", data)
-      return NextResponse.json(
-        { error: "Backend error", details: data },
-        { status: response.status }
-      )
-    }
-
-    console.log("[Cron] Price check completed:", data)
+    console.log("[Cron] Price check completed:", result)
 
     return NextResponse.json({
-      success: true,
+      success: result.success,
       message: "Daily price check completed",
-      results: data,
+      results: {
+        holidays_checked: result.holidaysChecked,
+        alerts_created: result.alertsCreated,
+        errors: result.errors,
+        details: result.details,
+      },
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
@@ -67,4 +53,3 @@ export async function GET(request: Request) {
 // Vercel cron jobs use GET requests
 export const dynamic = "force-dynamic"
 export const maxDuration = 300 // 5 minutes max for price checking
-

@@ -1,213 +1,132 @@
-# Backend Overview - What Does the Python Backend Do?
+# Backend Architecture - MIGRATION COMPLETE
 
-## Current State: Duplicate/Parallel Implementation
+## Current State: Unified Next.js Architecture
 
-The codebase currently has **TWO parallel implementations** of the same features:
+**Migration completed on 2026-01-01**
 
-1. **Python FastAPI Backend** (`backend/`) - Runs on port 8000
-2. **Next.js API Routes** (`frontend/app/api/`) - Runs as part of the Next.js server
+The codebase has been consolidated into a **single Next.js application**. All backend functionality has been migrated from the Python FastAPI backend to TypeScript services within the Next.js App Router.
 
-This appears to be a transitional state where features are being migrated from the Python backend to Next.js API routes.
+## Architecture Overview
 
-## What the Python Backend Currently Does
-
-### Core Structure
-
-The backend is a **FastAPI** application that provides REST API endpoints for:
-
-1. **Holiday Management** (`/holidays/*`)
-2. **Flight Operations** (`/flights/*`)
-3. **Authentication** (Supabase-based)
-4. **Health Checks**
-
-### Detailed Endpoints
-
-#### Holiday Management (`/holidays`)
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/holidays/` | GET | List all holidays for current user |
-| `/holidays/` | POST | Create a new holiday |
-| `/holidays/{id}` | GET | Get a specific holiday |
-| `/holidays/{id}` | PUT | Update a holiday |
-| `/holidays/{id}` | DELETE | Delete a holiday |
-| `/holidays/{id}/search-flights-unified` | POST | **Search flights (OLD version)** |
-| `/holidays/{id}/ai-scout` | POST | **AI route discovery** |
-| `/holidays/{id}/generate-insights` | POST | Generate AI insights for flights |
-
-#### Flight Operations (`/flights`)
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/flights/{id}` | GET | Get a specific flight |
-| `/flights/{id}/look` | POST | Lookup/verify flight fare via Airhob API |
-| `/flights/holiday/{holiday_id}` | GET | List all flights for a holiday |
-
-#### Utility Endpoints
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/health` | GET | Health check |
-| `/me` | GET | Get current authenticated user info |
-
-### Backend Services
-
-The backend includes several service modules:
-
-1. **`ai_scout.py`** - AI-powered route discovery and date recommendations
-2. **`serpapi.py`** - SerpAPI flight search integration
-3. **`airhob.py`** - Airhob API integration for fare lookup
-4. **`normalize.py`** - Flight data normalization
-5. **`llm_scorer.py`** - LLM-based flight scoring and preference extraction
-6. **`airports.py`** - Airport code expansion utilities
-
-### What Makes It Different from Frontend API Routes
-
-#### Python Backend Advantages:
-- ✅ Can run as a separate, scalable service
-- ✅ Better for CPU-intensive tasks
-- ✅ Can be deployed independently
-- ✅ Python ecosystem (pandas, numpy, etc.)
-
-#### Current Implementation Issues:
-- ❌ **Duplicates functionality** that's now in Next.js API routes
-- ❌ **Older flight search** - doesn't have the new optimization pipeline
-- ❌ **Additional complexity** - requires running two servers
-- ❌ **Auth complexity** - needs to handle Supabase tokens
-
-## Comparison: Backend vs Frontend API Routes
-
-| Feature | Python Backend | Next.js API Routes | Status |
-|---------|---------------|-------------------|--------|
-| Holiday CRUD | ✅ `/holidays/*` | ❌ (uses Supabase directly) | Backend only |
-| Flight Search | ✅ `/holidays/{id}/search-flights-unified` | ✅ `/api/holidays/{id}/search-flights-unified` | **DUPLICATE** |
-| AI Scout | ✅ `/holidays/{id}/ai-scout` | ✅ `/api/holidays/{id}/ai-scout` | **DUPLICATE** |
-| Generate Insights | ✅ `/holidays/{id}/generate-insights` | ✅ `/api/holidays/{id}/generate-insights` | **DUPLICATE** |
-| Flight Fare Lookup | ✅ `/flights/{id}/look` | ❌ | **Backend only** |
-| Date Optimization | ❌ (uses old system) | ✅ (NEW optimized pipeline) | **Frontend only** |
-
-## Current Usage in Frontend
-
-Looking at the frontend code, some components **still reference the backend**:
-
-```typescript
-// Found in multiple components:
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
-
-// Components that call backend:
-- create-holiday-form.tsx
-- unified-flight-search-button.tsx
-- ai-scout-button.tsx
-- generate-insights-button.tsx
-- backend.ts (lib)
+```
+frontend/
+├── app/api/                      # API Route handlers
+│   ├── ai/
+│   │   └── discover-destinations/  # AI destination discovery
+│   ├── cron/
+│   │   └── price-check/           # Daily price tracking cron
+│   ├── flights/
+│   │   └── [id]/look/             # Flight fare lookup
+│   ├── holidays/
+│   │   └── [id]/
+│   │       ├── ai-scout/          # AI route discovery
+│   │       ├── generate-insights/ # AI insights generation
+│   │       ├── search-flights-unified/  # Main flight search
+│   │       ├── smart-insights/    # Smart insights (price, weather, alternatives)
+│   │       └── price-tracking/    # Price tracking enable/disable
+│   └── price-alerts/              # Price alert management
+├── lib/
+│   ├── services/                  # Business logic services
+│   │   ├── destination-discovery.ts
+│   │   ├── insights.ts
+│   │   └── price-tracker.ts
+│   ├── serpapi.ts                 # SerpAPI integration
+│   ├── normalize-flights.ts       # Flight data normalization
+│   ├── ai-scout.ts                # AI route discovery
+│   ├── airhob-api.ts              # Airhob fare lookup
+│   ├── airports.ts                # Airport code utilities
+│   ├── llm-scorer.ts              # LLM flight scoring
+│   ├── llm-date-optimizer.ts      # Date optimization
+│   └── supabase/                  # Supabase client
+└── components/                    # UI components
 ```
 
-However, the frontend **also has its own API routes** that do the same things:
-- `frontend/app/api/holidays/[id]/search-flights-unified/route.ts` ✅ (NEW optimized)
-- `frontend/app/api/holidays/[id]/ai-scout/route.ts`
-- `frontend/app/api/holidays/[id]/generate-insights/route.ts`
+## What Changed
 
-## The Problem: Confusion & Redundancy
+### Services Migrated from Python to TypeScript
 
-**Right now, the frontend can use EITHER:**
-1. The Python backend (if `NEXT_PUBLIC_BACKEND_URL` is set)
-2. The Next.js API routes (default)
+| Python Service | TypeScript Equivalent | Location |
+|---------------|----------------------|----------|
+| `destination_discovery.py` | `destination-discovery.ts` | `lib/services/` |
+| `insights.py` | `insights.ts` | `lib/services/` |
+| `price_tracker.py` | `price-tracker.ts` | `lib/services/` |
+| `serpapi.py` | `serpapi.ts` | `lib/` |
+| `normalize.py` | `normalize-flights.ts` | `lib/` |
+| `ai_scout.py` | `ai-scout.ts` | `lib/` |
+| `airhob.py` | `airhob-api.ts` | `lib/` |
+| `airports.py` | `airports.ts` | `lib/` |
+| `llm_scorer.py` | `llm-scorer.ts` | `lib/` |
 
-This creates:
-- **Code duplication** - same logic in two places
-- **Maintenance burden** - updates needed in two places
-- **Testing complexity** - need to test both paths
-- **Confusion** - unclear which one is actually used
+### API Endpoints (All Next.js)
 
-## Recommendations
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/holidays/{id}/search-flights-unified` | POST | Unified flight search with LLM optimization |
+| `/api/holidays/{id}/ai-scout` | POST | AI route discovery |
+| `/api/holidays/{id}/smart-insights` | GET | Price analysis, alternatives, weather |
+| `/api/holidays/{id}/generate-insights` | POST | Generate AI insights |
+| `/api/holidays/{id}/price-tracking/enable` | POST | Enable price tracking |
+| `/api/holidays/{id}/price-tracking/disable` | POST | Disable price tracking |
+| `/api/ai/discover-destinations` | POST | AI destination discovery |
+| `/api/flights/{id}/look` | POST | Fare lookup via Airhob |
+| `/api/cron/price-check` | GET | Daily price check cron job |
 
-### Option 1: Remove Python Backend (Recommended for Your Use Case)
+## Cron Jobs
 
-Since you've just implemented the optimized flight search in Next.js API routes, you should:
+Daily price tracking cron job configured in `frontend/vercel.json`:
 
-1. ✅ **Keep Next.js API routes** - They're newer, have the optimization, and are simpler
-2. ❌ **Deprecate Python backend** - Mark as legacy, remove duplicate endpoints
-3. ✅ **Migrate remaining features**:
-   - Holiday CRUD → Use Supabase directly (already possible)
-   - Flight fare lookup → Add to Next.js API routes if needed
-4. ✅ **Update frontend components** - Remove `BACKEND_URL` references, use Next.js routes
+```json
+{
+  "crons": [
+    {
+      "path": "/api/cron/price-check",
+      "schedule": "0 8 * * *"
+    }
+  ]
+}
+```
 
-**Benefits:**
-- Simpler architecture (one server)
-- Easier deployment (just Vercel)
-- No backend server to manage
-- Latest optimizations are available
+## Benefits of Consolidation
 
-### Option 2: Keep Both (Hybrid Approach)
+1. **Single deployment** - Just Vercel, no separate backend server
+2. **Type safety** - End-to-end TypeScript
+3. **Simpler development** - One `npm run dev` command
+4. **Better DX** - Shared types, no HTTP boundary for internal calls
+5. **Cost savings** - No separate backend hosting
+6. **Latest implementations** - Optimized flight search pipeline
 
-Use backend for specific heavy tasks, Next.js for everything else:
+## Archived Python Backend
 
-1. **Next.js API Routes**:
-   - Flight search (with optimization) ✅
-   - AI scout ✅
-   - Generate insights ✅
-   - Holiday CRUD (via Supabase)
+The original Python FastAPI backend has been archived to `_archived/backend_archived/` for reference. This code is no longer used but preserved for historical context.
 
-2. **Python Backend**:
-   - Flight fare verification (Airhob)
-   - Heavy data processing
-   - Background jobs
+## Environment Variables
 
-**Benefits:**
-- Can scale Python backend separately
-- Use best tool for each job
+Required environment variables for the Next.js app:
 
-**Drawbacks:**
-- More complex
-- Two servers to manage
-- More deployment complexity
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
 
-### Option 3: Move Everything to Python Backend
+# API Keys
+OPENAI_API_KEY=
+SERPAPI_KEY=
+AIRHOB_API_KEY=
 
-Not recommended because:
-- You just built the optimized search in Next.js
-- Next.js API routes are simpler for this use case
-- Vercel deployment is easier
+# Cron Job Security
+CRON_SECRET=
 
-## What You Should Do Next
+# Optional
+NEXT_PUBLIC_DEV_BYPASS_AUTH=  # Set to "1" for dev mode auth bypass
+LOG_LEVEL=                     # debug, info, warn, error
+```
 
-### Immediate Action:
+## Database
 
-1. **Check which is actually being used**:
-   - Look at your frontend components
-   - See if `NEXT_PUBLIC_BACKEND_URL` is set
-   - Check browser network tab - which URLs are called?
+Using Supabase (PostgreSQL) with the following main tables:
+- `holidays` - User holiday configurations
+- `flights` - Flight search results
+- `price_drop_alerts` - Price tracking alerts
+- `ai_insights` - Generated AI insights
 
-2. **If using Next.js routes** (likely):
-   - ✅ You're good - your optimized search is already in place
-   - ❌ Python backend is not needed for testing
-   - Consider removing backend references from frontend
-
-3. **If using Python backend**:
-   - Need to migrate the optimization pipeline to Python
-   - Or update frontend to use Next.js routes instead
-
-### Migration Path (If Removing Backend):
-
-1. Update `create-holiday-form.tsx` - Remove backend calls
-2. Update `unified-flight-search-button.tsx` - Use Next.js route
-3. Update `ai-scout-button.tsx` - Use Next.js route
-4. Update `generate-insights-button.tsx` - Use Next.js route
-5. Remove `backend.ts` lib file or repurpose it
-6. Mark Python backend as deprecated
-
-## Summary
-
-**The Python backend currently:**
-- Provides holiday CRUD operations
-- Has an **older version** of flight search (without your new optimization)
-- Has AI scout and insights generation (duplicated in Next.js)
-- Provides flight fare lookup via Airhob
-
-**But you don't need it to test your new optimization** because:
-- Your optimized flight search is in Next.js API routes
-- Next.js API routes are self-contained
-- They run as part of the frontend server
-
-**The backend is essentially legacy/duplicate code** that could be removed or repurposed, but isn't required for the new flight search pipeline you just built.
-
+All database access is done through the Supabase client with Row Level Security (RLS) policies for multi-tenant isolation.

@@ -1,6 +1,17 @@
 # Flyin.to Architecture Documentation
 
-## Overview
+## System Architecture
+
+Flyin.to is a **unified Next.js application** deployed on Vercel. All backend functionality is implemented using Next.js API routes and TypeScript services.
+
+**Key Technologies:**
+- **Frontend & Backend**: Next.js 15 (App Router)
+- **Database**: Supabase (PostgreSQL with Row Level Security)
+- **AI/LLM**: OpenAI via Vercel AI SDK
+- **Flight Data**: SerpAPI (Google Flights), Airhob
+- **Deployment**: Vercel with Cron Jobs
+
+## Flight Search Architecture
 
 Flyin.to uses a three-layer architecture for flight search:
 
@@ -210,11 +221,36 @@ Each layer has fallback mechanisms:
 - **Preference Extraction**: Falls back to rule-based extraction
 - **Scoring**: Falls back to rule-based scoring
 
+## Additional Services
+
+### Price Tracking (`lib/services/price-tracker.ts`)
+
+Automated daily price tracking for saved holidays:
+- Runs via Vercel Cron at 8 AM UTC daily
+- Compares current prices against tracked baseline
+- Creates alerts when price drops exceed threshold
+- See `vercel.json` for cron configuration
+
+### Smart Insights (`lib/services/insights.ts`)
+
+AI-powered insights for holidays:
+- **Price Analysis**: Monthly price histograms with seasonal estimates
+- **Alternative Suggestions**: Cheaper date/route alternatives
+- **Weather Forecasts**: Destination weather with packing tips
+
+### Destination Discovery (`lib/services/destination-discovery.ts`)
+
+AI-powered destination recommendations based on:
+- Origin airports
+- Date range and trip length
+- Budget and preferences
+- Natural language descriptions
+
 ## Future Enhancements
 
 1. **Caching Layer**: Cache SerpApi results by route/date
 2. **Multiple Providers**: Run searches in parallel across providers
 3. **Date Range Expansion**: Automatically search ±3 days for flexibility
-4. **Price Tracking**: Store historical prices for trend analysis
-5. **User Feedback Loop**: Learn from user selections to improve scoring
+4. **User Feedback Loop**: Learn from user selections to improve scoring
+5. **Real-time Price Updates**: WebSocket notifications for price changes
 

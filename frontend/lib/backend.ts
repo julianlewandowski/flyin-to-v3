@@ -1,8 +1,6 @@
 import type { Holiday } from "./types"
 import { createClient } from "./supabase/server"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
-
 export async function fetchHolidaysForCurrentUser(): Promise<Holiday[]> {
   const supabase = await createClient()
 

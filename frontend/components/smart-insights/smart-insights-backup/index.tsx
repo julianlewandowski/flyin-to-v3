@@ -3,13 +3,10 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Sparkles, Loader2, RefreshCw } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 import PriceAnalysisCard from "./price-analysis-card"
 import AlternativeSuggestionsCard from "./alternative-suggestions-card"
 import WeatherForecastCard from "./weather-forecast-card"
 import type { SmartInsights } from "@/lib/types"
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
 
 interface SmartInsightsSectionProps {
   holidayId: string
@@ -26,24 +23,14 @@ export default function SmartInsightsSection({ holidayId, hasFlights }: SmartIns
     setError(null)
 
     try {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      }
-      if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`
-      }
-
-      const response = await fetch(`${BACKEND_URL}/holidays/${holidayId}/smart-insights`, {
+      // Use Next.js API route instead of backend directly
+      const response = await fetch(`/api/holidays/${holidayId}/smart-insights`, {
         method: "GET",
-        headers,
       })
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.detail || "Failed to fetch insights")
+        throw new Error(data.error || data.detail || "Failed to fetch insights")
       }
 
       const data = await response.json()

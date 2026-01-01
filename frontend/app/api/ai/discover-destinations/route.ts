@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
+import { discoverDestinations } from "@/lib/services/destination-discovery"
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,60 +32,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Call backend API
-    const requestBody = {
-      origins: origins,
-      date_range: dateRange,
-      trip_lengths: tripLengths,
+    // Use local TypeScript implementation
+    console.log("[AI Discovery] Using local TypeScript implementation")
+    
+    const destinations = await discoverDestinations({
+      origins,
+      dateRange,
+      tripLengths,
       preferences: body.preferences || null,
       prompt: body.prompt || null,
-    }
-    
-    console.log("[AI Discovery] Calling backend:", BACKEND_URL)
-    console.log("[AI Discovery] Request body:", JSON.stringify(requestBody, null, 2))
-    
-    let response: Response
-    try {
-      response = await fetch(`${BACKEND_URL}/ai/discover-destinations`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      })
-    } catch (fetchError) {
-      console.error("[AI Discovery] Fetch error:", fetchError)
-      return NextResponse.json(
-        { 
-          error: `Failed to connect to backend server at ${BACKEND_URL}. Please ensure the backend is running.`,
-          details: fetchError instanceof Error ? fetchError.message : "Unknown fetch error"
-        },
-        { status: 503 }
-      )
-    }
+    })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      let errorData
-      try {
-        errorData = JSON.parse(errorText)
-      } catch {
-        errorData = { detail: errorText || `Backend returned ${response.status}` }
-      }
-      
-      console.error("[AI Discovery] Backend error:", response.status, errorData)
-      return NextResponse.json(
-        { 
-          error: errorData.detail || errorData.error || "Could not discover destinations",
-          status: response.status
-        },
-        { status: response.status }
-      )
-    }
-
-    const data = await response.json()
-    console.log("[AI Discovery] Success:", data)
-    return NextResponse.json(data)
+    console.log("[AI Discovery] Success:", { destinations })
+    return NextResponse.json({ destinations })
   } catch (error) {
     console.error("[AI Discovery] Unexpected error:", error)
     return NextResponse.json(
@@ -98,9 +56,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
-
-
-
-
-
