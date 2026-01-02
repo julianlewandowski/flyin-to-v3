@@ -165,6 +165,7 @@ All types are defined in `lib/types.ts`:
 - `ScoredFlightOffer` - FlightOffer + LLM evaluation
 - `SerpApiFlightSearchParams` - SerpApi-specific parameters
 - `FlightSegment`, `Layover`, `AirportInfo` - Supporting types
+test
 
 ## Environment Variables
 
