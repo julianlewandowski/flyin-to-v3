@@ -29,7 +29,7 @@ export const AboutSection = () => {
   const socialLinks = [
     {
       icon: Globe,
-      href: "https://julianlewandowski.com",
+      href: "https://julianlew.com",
       label: "Website",
       color: "hover:text-blue-500"
     },
@@ -53,7 +53,7 @@ export const AboutSection = () => {
     },
     {
       icon: Mail,
-      href: "mailto:julian.lewandowski365@gmail.com",
+      href: "mailto:hi@julianlew.com",
       label: "Email",
       color: "hover:text-red-500"
     }

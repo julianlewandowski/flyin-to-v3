@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Globe, Linkedin } from "lucide-react";
+import { Globe, Linkedin, Mail } from "lucide-react";
 import flyinLogo from "@/app/assets/flyin-color-logo.svg";
 
 export const Footer = () => {
@@ -37,7 +37,7 @@ export const Footer = () => {
           {/* Social Links */}
           <div className="flex items-center space-x-6">
             <a
-              href="https://www.julianlewandowski.com"
+              href="https://julianlew.com"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors duration-200"
@@ -65,6 +65,13 @@ export const Footer = () => {
               className="text-xs text-muted-foreground hover:text-primary transition-colors duration-200"
             >
               Terms of Service
+            </Link>
+            <span className="hidden md:inline text-muted-foreground">•</span>
+            <Link 
+              href="mailto:info@flyin.to" 
+              className="ml-0 text-xs text-muted-foreground hover:text-primary transition-colors duration-200"
+            >
+              info@flyin.to
             </Link>
           </div>
         </div>
