@@ -22,6 +22,10 @@ import { emitUserThought, type ThoughtStreamCallback } from "@/lib/ai-thought-st
 
 const DEV_BYPASS_AUTH = process.env.NEXT_PUBLIC_DEV_BYPASS_AUTH === "1"
 
+// Increase timeout for this route since it performs multiple LLM calls and SerpAPI requests
+// Vercel Pro plan allows up to 300 seconds (5 minutes)
+export const maxDuration = 300
+
 /**
  * Generate search parameters using optimized dates (max 5 SerpAPI calls)
  * Intelligently selects origin-destination-date combinations to stay within the limit.

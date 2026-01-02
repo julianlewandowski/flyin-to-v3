@@ -39,7 +39,40 @@ export default function UnifiedFlightSearchButton({
         },
       })
 
-      const data = await res.json()
+      // Check for timeout or gateway errors first
+      if (res.status === 504 || res.status === 502 || res.status === 503) {
+        const errorMsg = res.status === 504 
+          ? "Request timed out. The search is taking too long. Please try again with fewer destinations or a shorter date range."
+          : "Server error. Please try again in a moment."
+        console.error("[Unified Search Button] Gateway/Timeout error:", res.status, errorMsg)
+        setError(errorMsg)
+        return
+      }
+
+      // Try to parse JSON, but handle non-JSON responses gracefully
+      let data: any
+      const contentType = res.headers.get("content-type")
+      
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          data = await res.json()
+        } catch (jsonError) {
+          // If JSON parsing fails, read as text to see what we got
+          const textResponse = await res.text()
+          console.error("[Unified Search Button] Failed to parse JSON response:", textResponse.substring(0, 200))
+          setError(`Server returned invalid response. Status: ${res.status}`)
+          return
+        }
+      } else {
+        // Non-JSON response (likely HTML error page)
+        const textResponse = await res.text()
+        console.error("[Unified Search Button] Non-JSON response:", textResponse.substring(0, 200))
+        const errorMsg = res.status >= 500
+          ? "Server error occurred. Please try again later."
+          : `Unexpected response format. Status: ${res.status}`
+        setError(errorMsg)
+        return
+      }
       
       console.log("[Unified Search Button] Response:", {
         ok: res.ok,
