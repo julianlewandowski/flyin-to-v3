@@ -12,7 +12,12 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "Flyin.to - Find the Best Flight Deals",
   description: "Track prices across multiple destinations and never miss a deal. Perfect for flexible travelers.",
-    generator: 'v0.app'
+  generator: 'v0.app',
+  icons: {
+    icon: '/assets/flyin-icon-nobg.png',
+    shortcut: '/assets/flyin-icon-nobg.png',
+    apple: '/assets/flyin-icon-nobg.png',
+  },
 }
 
 export default function RootLayout({
