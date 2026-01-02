@@ -3,34 +3,12 @@
 ## Quick Start Checklist
 
 - [ ] Environment variables configured
-- [ ] Backend server running (port 8000)
 - [ ] Frontend server running (port 3000)
 - [ ] Test holiday created
 - [ ] Flight search executed
 - [ ] Optimization verified
 
 ## Step 1: Set Up Environment Variables
-
-### Backend Environment (`.env` in `backend/` directory)
-
-Create `backend/.env`:
-
-```env
-# Supabase
-SUPABASE_PROJECT_URL=your_supabase_project_url
-SUPABASE_DB_URL=your_supabase_db_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
-
-# External APIs
-SERPAPI_KEY=your_serpapi_key
-OPENAI_API_KEY=your_openai_api_key
-AIRHOB_API_KEY=your_airhob_key  # Optional
-
-# App settings
-DEV_BYPASS_AUTH=True  # For testing without auth
-DEBUG=True
-```
 
 ### Frontend Environment (`.env.local` in `frontend/` directory)
 
@@ -44,26 +22,54 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 # SerpAPI (Required for flight search)
 SERPAPI_KEY=your_serpapi_key
 
-# OpenAI (Required for date optimization)
+# OpenAI (Required for date optimization and AI features)
 OPENAI_API_KEY=your_openai_api_key
 
-# Backend URL (Optional - only if using Python backend)
-NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+# Airhob (Optional - for fare lookup)
+AIRHOB_API_KEY=your_airhob_key
+
+# Cron Job Security (Required for production)
+# Generate a random secret: openssl rand -base64 32
+# Or use: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+CRON_SECRET=your_cron_secret
 
 # Dev mode (Optional)
 NEXT_PUBLIC_DEV_BYPASS_AUTH=1
 ```
 
-## Step 2: Install Dependencies
+### How to Generate CRON_SECRET
 
-### Backend Dependencies
+The `CRON_SECRET` is a random string used to secure your cron endpoint. You can generate it using one of these methods:
 
+**Option 1: Using OpenSSL (recommended)**
 ```bash
-cd backend
-python -m venv venv  # If not already created
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
+openssl rand -base64 32
 ```
+
+**Option 2: Using Node.js**
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+**Option 3: Using PowerShell (Windows)**
+```powershell
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Minimum 0 -Maximum 256 }))
+```
+
+**Option 4: Online generator**
+- Visit https://randomkeygen.com/ and use a "CodeIgniter Encryption Keys" generator
+
+**Important Notes:**
+- For **local development**: You can skip this or use any random string (it's only checked in production)
+- For **production (Vercel)**: 
+  1. Generate a secret using one of the methods above
+  2. Add it to your Vercel project's environment variables:
+     - Go to your Vercel project → Settings → Environment Variables
+     - Add `CRON_SECRET` with your generated value
+     - Make sure it's set for "Production" environment
+  3. Redeploy your application
+
+## Step 2: Install Dependencies
 
 ### Frontend Dependencies
 
@@ -74,34 +80,9 @@ npm install
 pnpm install
 ```
 
-## Step 3: Start Both Servers
+## Step 3: Start the Server
 
-You'll need **two terminal windows**:
-
-### Terminal 1: Backend Server
-
-```bash
-cd backend
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-python -m uvicorn app.main:app --reload --port 8000
-```
-
-**Expected output:**
-```
-INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process
-INFO:     Started server process
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
-```
-
-**Verify it's working:**
-```bash
-curl http://localhost:8000/health
-# Should return: {"status":"ok"}
-```
-
-### Terminal 2: Frontend Server
+### Frontend Server (Unified Next.js Application)
 
 ```bash
 cd frontend
@@ -141,13 +122,11 @@ pnpm dev
 6. Save the holiday
 7. **Note the Holiday ID** from the URL (e.g., `http://localhost:3000/dashboard/holidays/abc-123-def`)
 
-### Option B: Direct API Call
+### Option B: Direct API Call (Next.js API Route)
 
 ```bash
-# Get auth token first (if not using dev bypass)
-# Then create holiday:
-curl -X POST http://localhost:8000/holidays/ \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+# Create holiday via Next.js API route:
+curl -X POST http://localhost:3000/api/holidays \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test Holiday",
@@ -170,15 +149,7 @@ curl -X POST http://localhost:8000/holidays/ \
 3. Wait for the search to complete (may take 30-60 seconds)
 4. Check the results displayed
 
-### Option B: Direct API Call (Backend)
-
-```bash
-curl -X POST http://localhost:8000/holidays/{holiday_id}/search-flights-unified \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json"
-```
-
-### Option C: Direct API Call (Frontend Next.js Route)
+### Option B: Direct API Call (Next.js API Route)
 
 ```bash
 curl -X POST http://localhost:3000/api/holidays/{holiday_id}/search-flights-unified \
@@ -187,28 +158,9 @@ curl -X POST http://localhost:3000/api/holidays/{holiday_id}/search-flights-unif
 
 ## Step 6: Verify Optimization is Working
 
-### Check Backend Logs (Terminal 1)
+### Check Server Logs
 
-Look for these log messages:
-
-```
-[Unified Search] STEP 2: Optimizing dates with OpenAI (Phase 1)...
-[Date Optimizer] Starting optimization for: {...}
-[Date Optimizer] Optimization complete: 5 date pairs identified
-[Unified Search] OpenAI optimized to 5 date pairs (max 5 allowed)
-[Unified Search] Generated 5 search params (limit: 5)
-[Unified Search] STEP 4: Searching SerpApi (Phase 2) with optimized dates...
-[Unified Search] Phase 2: Using only 5 optimized date pairs, ensuring max 5 SerpAPI calls
-```
-
-**Key indicators:**
-- ✅ Should see "Optimization complete: 5 date pairs" (or fewer)
-- ✅ Should see "Generated 5 search params (limit: 5)" (or fewer)
-- ✅ Should NOT see more than 5 SerpAPI calls
-
-### Check Frontend Logs (Terminal 2)
-
-If using the frontend Next.js route, look for similar logs:
+Look for these log messages in your terminal:
 
 ```
 [Unified Search] STEP 2: Optimizing dates with OpenAI (Phase 1)...
@@ -272,18 +224,10 @@ The response should include optimization metadata:
 
 #### Issue: "Unauthorized" error
 **Solution**:
-- Set `DEV_BYPASS_AUTH=True` in backend `.env`
 - Set `NEXT_PUBLIC_DEV_BYPASS_AUTH=1` in frontend `.env.local`
 - Or log in through the UI first
 
-#### Issue: Backend not starting
-**Solution**:
-- Check Python version (should be 3.9+)
-- Check virtual environment is activated
-- Check all dependencies are installed
-- Check port 8000 is not in use
-
-#### Issue: Frontend not starting
+#### Issue: Server not starting
 **Solution**:
 - Check Node.js version (should be 18+)
 - Check all dependencies are installed: `npm install`
@@ -333,15 +277,15 @@ Save this as `test_search.sh`:
 #!/bin/bash
 
 HOLIDAY_ID="your-holiday-id-here"
-BACKEND_URL="http://localhost:8000"
+API_URL="http://localhost:3000"
 
 echo "Testing flight search optimization..."
 echo "Holiday ID: $HOLIDAY_ID"
 echo ""
 
-# Test backend endpoint
-echo "Testing backend endpoint..."
-curl -X POST "$BACKEND_URL/holidays/$HOLIDAY_ID/search-flights-unified" \
+# Test Next.js API endpoint
+echo "Testing Next.js API endpoint..."
+curl -X POST "$API_URL/api/holidays/$HOLIDAY_ID/search-flights-unified" \
   -H "Content-Type: application/json" \
   -w "\n\nHTTP Status: %{http_code}\n" \
   | jq '.metadata | {serpapi_calls, optimized_dates, total_retrieved}'
@@ -360,18 +304,17 @@ chmod +x test_search.sh
 
 **To test the full app:**
 
-1. ✅ Set up environment variables (backend `.env` + frontend `.env.local`)
-2. ✅ Install dependencies (both backend and frontend)
-3. ✅ Start backend server (Terminal 1: `uvicorn app.main:app --reload --port 8000`)
-4. ✅ Start frontend server (Terminal 2: `npm run dev`)
-5. ✅ Create a test holiday (through UI or API)
-6. ✅ Run flight search (through UI or API)
-7. ✅ Verify optimization (check logs and response metadata)
-8. ✅ Confirm SerpAPI calls ≤ 5
+1. ✅ Set up environment variables (frontend `.env.local`)
+2. ✅ Install dependencies (`npm install` in `frontend/`)
+3. ✅ Start Next.js server (`npm run dev` in `frontend/`)
+4. ✅ Create a test holiday (through UI or API)
+5. ✅ Run flight search (through UI or API)
+6. ✅ Verify optimization (check logs and response metadata)
+7. ✅ Confirm SerpAPI calls ≤ 5
 
 **Success indicators:**
-- ✅ Backend logs show "Optimization complete: 5 date pairs"
-- ✅ Backend logs show "Generated 5 search params (limit: 5)"
+- ✅ Server logs show "Optimization complete: 5 date pairs"
+- ✅ Server logs show "Generated 5 search params (limit: 5)"
 - ✅ Response metadata shows `serpapi_calls: 5` (or fewer)
 - ✅ Flight results are returned and saved to database
 
