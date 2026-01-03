@@ -54,12 +54,12 @@ export const HeroSection = () => {
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Price Monitoring</p>
               </div>
               <div className="text-left">
-                <p className="text-2xl font-bold text-foreground">AI</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Flight Searches</p>
+                <p className="text-2xl font-bold text-foreground">100%</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Free to use</p>
               </div>
               <div className="text-left">
-                <p className="text-2xl font-bold text-foreground">100%</p>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Free to Start</p>
+                <p className="text-2xl font-bold text-foreground">Hours</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">of searching saved</p>
               </div>
             </div>
           </div>

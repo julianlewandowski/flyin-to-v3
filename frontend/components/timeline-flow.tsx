@@ -172,11 +172,6 @@ export const TimelineFlow = () => {
                         <div className="relative w-10 h-10 md:w-12 md:h-12 bg-orange-500 rounded-sm flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-500">
                           <span className="text-white font-bold text-sm md:text-base">{step.id}</span>
                         </div>
-                        
-                        {/* Pulse Effect */}
-                        {isVisible && (
-                          <div className="absolute inset-0 rounded-sm bg-orange-500/20 animate-ping" style={{ animationDuration: '2s' }} />
-                        )}
                       </div>
                     </div>
 

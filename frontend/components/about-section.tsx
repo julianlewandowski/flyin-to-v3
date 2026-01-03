@@ -30,7 +30,7 @@ export const AboutSection = () => {
     {
       icon: Globe,
       href: "https://julianlew.com",
-      label: "Website",
+      label: "my site",
       color: "hover:text-blue-500"
     },
     {

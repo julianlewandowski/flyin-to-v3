@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist } from "next/font/google"
 import "./globals.css"
+import { ClarityScript } from "@/components/clarity"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,7 +28,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${geistSans.variable} antialiased`} suppressHydrationWarning>
-      <body className="font-sans">{children}</body>
+      <body className="font-sans">
+        <ClarityScript />
+        {children}
+      </body>
     </html>
   )
 }
