@@ -3,21 +3,35 @@
  * 
  * This endpoint is called by Vercel Cron once per day at 8 AM UTC.
  * Configure in vercel.json with the cron schedule.
+ * 
+ * Authentication:
+ * - In production (Vercel): Uses CRON_SECRET from Authorization header or x-cron-secret header
+ * - In development: Can be called directly for testing
  */
 
 import { NextResponse } from "next/server"
 import { runDailyPriceCheck } from "@/lib/services/price-tracker"
 
 export async function GET(request: Request) {
-  // Verify this is a legitimate cron request from Vercel
-  const authHeader = request.headers.get("authorization")
-  
-  // In production, Vercel sets this header for cron jobs
-  if (process.env.VERCEL && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    )
+  // Verify this is a legitimate cron request
+  // In production, require authentication
+  if (process.env.VERCEL) {
+    const authHeader = request.headers.get("authorization")
+    const cronSecretHeader = request.headers.get("x-cron-secret")
+    const url = new URL(request.url)
+    const secretParam = url.searchParams.get("secret")
+    
+    const providedSecret = authHeader?.replace("Bearer ", "") || cronSecretHeader || secretParam
+    const expectedSecret = process.env.CRON_SECRET
+    
+    // If CRON_SECRET is set, require it
+    if (expectedSecret && providedSecret !== expectedSecret) {
+      console.error("[Cron] Unauthorized: Invalid or missing CRON_SECRET")
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
   }
 
   console.log("[Cron] Starting daily price check...")
