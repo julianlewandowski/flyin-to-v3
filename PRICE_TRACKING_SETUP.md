@@ -126,8 +126,103 @@ WHERE price_tracking_enabled IS NULL OR price_tracking_enabled = false;
 
 See `scripts/enable_price_tracking.sql` for a complete script with all these queries.
 
-#### Option B: Via API (if you have an endpoint)
-Check if there's an API endpoint at `/api/holidays/{id}/price-tracking/enable`
+#### Option C: Via API Endpoint (Recommended)
+
+You have API endpoints set up! This is often easier than using SQL. Here's how to use them:
+
+**Enable Price Tracking via API:**
+
+**For PowerShell (Windows):**
+
+**⚠️ IMPORTANT: Authentication Required**
+
+The API requires authentication. You have two options:
+
+**Option A: Enable Dev Bypass (Easiest for Local Testing)**
+
+1. Create or edit `frontend/.env.local` file
+2. Add this line:
+   ```env
+   NEXT_PUBLIC_DEV_BYPASS_AUTH=1
+   ```
+3. Restart your dev server (`npm run dev`)
+4. Then run the API call:
+
+```powershell
+# Replace YOUR-HOLIDAY-UUID with the actual holiday ID
+Invoke-WebRequest -Uri "http://localhost:3000/api/holidays/YOUR-HOLIDAY-UUID/price-tracking/enable" `
+  -Method POST `
+  -Headers @{"Content-Type"="application/json"} `
+  -Body '{"threshold_percent": 10.0}'
+```
+
+**Option B: Use SQL Instead (No Auth Needed)**
+
+If you prefer not to use the API, you can enable tracking directly in Supabase SQL Editor (see Step 2b above).
+
+# Option 2: Using curl.exe (if you have curl installed)
+curl.exe -X POST "http://localhost:3000/api/holidays/YOUR-HOLIDAY-UUID/price-tracking/enable" `
+  -H "Content-Type: application/json" `
+  -d '{\"threshold_percent\": 10.0}'
+```
+
+**For Bash/Linux/Mac:**
+```bash
+# Replace YOUR-HOLIDAY-UUID with the actual holiday ID
+# Replace YOUR-APP-URL with your app URL (e.g., http://localhost:3000 or https://your-app.vercel.app)
+
+curl -X POST "http://localhost:3000/api/holidays/YOUR-HOLIDAY-UUID/price-tracking/enable" \
+  -H "Content-Type: application/json" \
+  -d '{"threshold_percent": 10.0}'
+```
+
+**Or using JavaScript/fetch:**
+
+```javascript
+const holidayId = 'YOUR-HOLIDAY-UUID';
+const response = await fetch(`/api/holidays/${holidayId}/price-tracking/enable`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ threshold_percent: 10.0 }) // Optional, defaults to 10%
+});
+
+const result = await response.json();
+console.log(result);
+```
+
+**Check Price Tracking Status:**
+
+**PowerShell:**
+```powershell
+Invoke-WebRequest -Uri "http://localhost:3000/api/holidays/YOUR-HOLIDAY-UUID/price-tracking/status" -Method GET
+```
+
+**Bash:**
+```bash
+curl "http://localhost:3000/api/holidays/YOUR-HOLIDAY-UUID/price-tracking/status"
+```
+
+**Disable Price Tracking:**
+
+**PowerShell:**
+```powershell
+Invoke-WebRequest -Uri "http://localhost:3000/api/holidays/YOUR-HOLIDAY-UUID/price-tracking/disable" -Method POST
+```
+
+**Bash:**
+```bash
+curl -X POST "http://localhost:3000/api/holidays/YOUR-HOLIDAY-UUID/price-tracking/disable"
+```
+
+**Available API Endpoints:**
+- `POST /api/holidays/{id}/price-tracking/enable` - Enable tracking (sets baseline price automatically)
+- `POST /api/holidays/{id}/price-tracking/disable` - Disable tracking
+- `GET /api/holidays/{id}/price-tracking/status` - Check current status
+
+**Note:** The API automatically:
+- Finds the current cheapest flight price and sets it as the baseline
+- Requires authentication (you must be logged in)
+- Only works for holidays that belong to your user account
 
 ### Step 3: Verify Database Schema
 
