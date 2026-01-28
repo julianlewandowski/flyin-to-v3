@@ -17,10 +17,17 @@ export interface Holiday {
   last_ai_scan?: string
   // Price tracking fields
   price_tracking_enabled?: boolean
-  last_tracked_price?: number | null
+  baseline_price?: number | null
+  baseline_set_at?: string | null
+  last_price_found?: number | null
   price_drop_threshold_percent?: number
   has_active_price_alert?: boolean
   last_price_check?: string
+  consecutive_failures?: number
+  last_viewed_at?: string | null
+  tracking_disabled_reason?: 'manual' | 'inactivity' | 'failures' | null
+  /** @deprecated Use baseline_price instead */
+  last_tracked_price?: number | null
   created_at: string
   updated_at: string
 }

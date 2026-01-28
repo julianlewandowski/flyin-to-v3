@@ -55,6 +55,15 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
     redirect("/dashboard")
   }
 
+  // Update last_viewed_at for inactivity tracking (fire-and-forget, don't block page load)
+  supabase
+    .from("holidays")
+    .update({ last_viewed_at: new Date().toISOString() })
+    .eq("id", id)
+    .then(() => {
+      // Activity recorded
+    })
+
   // Fetch flights for this holiday
   // Default sort by price (ascending) - client-side sorting will handle the rest
   const { data: flights, error: flightsError } = await supabase

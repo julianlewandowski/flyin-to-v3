@@ -57,6 +57,33 @@ export async function POST(
       )
     }
 
+    // Check if user already has tracking enabled on another project
+    // (Skip if tracking is already enabled on THIS project - re-enabling is allowed)
+    if (!holiday.price_tracking_enabled && userId) {
+      const { data: existingTracked } = await supabase
+        .from("holidays")
+        .select("id, name")
+        .eq("user_id", userId)
+        .eq("price_tracking_enabled", true)
+        .neq("id", holidayId)
+        .limit(1)
+        .single()
+
+      if (existingTracked) {
+        return NextResponse.json(
+          {
+            error: "You already have price tracking enabled on another project",
+            existing_project: {
+              id: existingTracked.id,
+              name: existingTracked.name,
+            },
+            message: `Please disable tracking on "${existingTracked.name}" first, or disable it from your dashboard.`,
+          },
+          { status: 409 }
+        )
+      }
+    }
+
     // Get current cheapest flight price
     const { data: flights } = await supabase
       .from("flights")
@@ -70,15 +97,21 @@ export async function POST(
       : null
 
     // Update holiday with tracking settings
+    const now = new Date().toISOString()
     const { data: updated, error: updateError } = await supabase
       .from("holidays")
       .update({
         price_tracking_enabled: true,
-        last_tracked_price: currentLowestPrice,
+        baseline_price: currentLowestPrice,
+        baseline_set_at: currentLowestPrice ? now : null,
+        last_price_found: currentLowestPrice,
         price_drop_threshold_percent: thresholdPercent,
         has_active_price_alert: false,
-        last_price_check: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        last_price_check: now,
+        last_viewed_at: now, // Reset inactivity timer when enabling tracking
+        consecutive_failures: 0,
+        tracking_disabled_reason: null, // Clear any previous disable reason
+        updated_at: now,
       })
       .eq("id", holidayId)
       .select()
@@ -95,7 +128,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: `Price tracking enabled for "${holiday.name}"`,
-      last_tracked_price: currentLowestPrice,
+      baseline_price: currentLowestPrice,
       threshold_percent: thresholdPercent,
     })
   } catch (error) {
