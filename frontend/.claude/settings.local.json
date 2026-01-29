@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(ls -la \"C:\\\\Users\\\\julek\\\\OneDrive\\\\Documents\\\\flyin-to-v3\\\\scripts\"\"*.sql 2>/dev/null || dir \"C:UsersjulekOneDriveDocumentsflyin-to-v3scripts\"\")",
+      "Bash(findstr:*)",
+      "Bash(npm install:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)"
+    ]
+  }
+}

@@ -1,0 +1,109 @@
+=============================================================================
+CLAUDE CODE SESSION - Price Tracking Feature
+Date: 2026-01-28
+Project: Flyin.to (frontend)
+=============================================================================
+
+## CONTEXT
+
+Product: Flyin.to - AI-powered flight search and holiday planning app
+Stack: Next.js 15, Supabase (PostgreSQL), SerpAPI, Vercel
+Issue: Daily price tracking cron job failing, sending error emails
+
+## REQUIREMENTS GATHERED
+
+Price Tracking Definition:
+1. User enables tracking on a project -> first scan sets BASELINE PRICE
+2. Daily scans compare current price to baseline
+3. If price drops >= 10% from baseline -> email user, RESET baseline to new price
+4. If drop < 10% -> do nothing, baseline unchanged
+5. Baseline is "rolling" - each alert resets it
+
+User Inactivity Rule:
+- 7 days without viewing the specific project -> disable tracking + email
+- Activity = viewing the specific tracked project
+
+Constraints:
+- One tracked project per user max
+- 3 consecutive scan failures -> disable tracking + notify
+- Email must succeed before baseline resets
+- If email fails twice -> log, alert developer, keep scanning
+
+## ROOT CAUSE IDENTIFIED
+
+The cron job uses `createClient()` from `lib/supabase/server.ts` which:
+- Uses ANON KEY with cookie-based session auth
+- Has no user context in cron (no cookies)
+- RLS policies block all operations (auth.uid() is NULL)
+
+Additional issues:
+- Baseline updated on EVERY scan (should only update on alert)
+- No email sending implemented
+- No inactivity tracking
+
+## IMPLEMENTATION PLAN APPROVED
+
+Phase 1: Fix Cron Job (stop daily errors)
+  1.1 Create service-role Supabase client
+  1.2 Update cron to use admin client
+  1.3 Add structured logging
+
+Phase 2: Fix Baseline Logic
+  2.1 Audit current behavior
+  2.2 Fix baseline update logic (only on alert + email success)
+  2.3 Handle first scan explicitly
+
+Phase 3: Database Schema Migration
+  3.1-3.3 Add columns: baseline_set_at, last_price_found,
+          consecutive_failures, last_viewed_at, tracking_disabled_reason
+
+Phase 4: Email Integration
+  4.1-4.5 Resend setup, email service, templates, integration
+
+Phase 5: Inactivity Tracking
+  5.1-5.3 Update last_viewed_at on view, check in cron
+
+Phase 6: Failure Tracking
+  6.1-6.2 Increment failures, disable after 3
+
+Phase 7: Single Active Tracking Limit
+  7.1 Validation on enable
+
+Phase 8: Cleanup
+  8.1-8.3 Health endpoint, retry logic, dead code removal
+
+## STEP 1 IMPLEMENTED
+
+Files created:
+- lib/supabase/admin.ts (service-role client)
+
+Files modified:
+- lib/services/price-tracker.ts
+  - Changed import to use createAdminClient
+  - Added duration tracking
+  - Added CRON_SUMMARY structured logging
+
+## TESTING INSTRUCTIONS
+
+Local:
+1. Add SUPABASE_SERVICE_ROLE_KEY to .env.local
+2. curl http://localhost:3000/api/cron/price-check
+
+Production:
+1. Add SUPABASE_SERVICE_ROLE_KEY to Vercel env vars
+2. Redeploy
+3. curl with Authorization header to trigger cron
+4. Check Vercel logs for CRON_SUMMARY
+
+Success signals:
+- No more error emails
+- Logs show "Found X holidays to check" where X > 0
+- Response shows holidays_checked > 0
+
+## NEXT STEPS
+
+Implement Step 2: Fix baseline logic
+- Only update baseline when alert created AND email sent successfully
+- Handle first scan (baseline establishment) explicitly
+
+=============================================================================
