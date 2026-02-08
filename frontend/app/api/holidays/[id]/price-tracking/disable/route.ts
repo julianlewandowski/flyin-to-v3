@@ -51,6 +51,7 @@ export async function POST(
       .from("holidays")
       .update({
         price_tracking_enabled: false,
+        tracking_disabled_reason: "manual",
         updated_at: new Date().toISOString(),
       })
       .eq("id", holidayId)

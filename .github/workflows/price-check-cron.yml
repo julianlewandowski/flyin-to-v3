@@ -4,10 +4,8 @@
 name: Daily Price Check
 
 on:
-  schedule:
-    # Run at 8:00 AM UTC every day
-    - cron: '0 8 * * *'
-  # Allow manual trigger for testing
+  # Manual trigger only - Vercel cron handles the daily schedule automatically.
+  # Use this as a backup if Vercel cron fails.
   workflow_dispatch:
 
 jobs:

@@ -486,6 +486,32 @@ export function normalizeFlightOffers(serpResults: any[], provider: string = "se
 }
 
 /**
+ * Extract raw flight objects from a SerpApi response.
+ * Returns the individual flight entries (not normalized) from best_flights,
+ * other_flights, and flights arrays.
+ */
+export function extractFlightsFromSerpApiResponse(response: SerpApiFlightResult): unknown[] {
+  const flights: unknown[] = []
+
+  if (Array.isArray(response.best_flights)) {
+    flights.push(...response.best_flights)
+  }
+  if (Array.isArray(response.other_flights)) {
+    flights.push(...response.other_flights)
+  }
+  if (Array.isArray(response.flights)) {
+    flights.push(...response.flights)
+  }
+
+  // Fallback: if response itself is an array
+  if (flights.length === 0 && Array.isArray(response)) {
+    flights.push(...response)
+  }
+
+  return flights
+}
+
+/**
  * Normalize SerpApi response object to FlightOffers array
  * Handles different SerpApi response structures
  */

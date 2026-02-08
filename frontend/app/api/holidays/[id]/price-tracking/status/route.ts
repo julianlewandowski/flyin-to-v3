@@ -34,7 +34,7 @@ export async function GET(
     // Fetch holiday with price tracking fields
     let query = supabase
       .from("holidays")
-      .select("id, name, price_tracking_enabled, last_tracked_price, price_drop_threshold_percent, has_active_price_alert, last_price_check")
+      .select("id, name, price_tracking_enabled, baseline_price, price_drop_threshold_percent, has_active_price_alert, last_price_check")
       .eq("id", holidayId)
 
     if (!DEV_BYPASS_AUTH && userId) {
@@ -67,7 +67,7 @@ export async function GET(
       holiday_id: holidayId,
       holiday_name: holiday.name,
       enabled: holiday.price_tracking_enabled || false,
-      last_tracked_price: holiday.last_tracked_price ? parseFloat(holiday.last_tracked_price) : null,
+      baseline_price: holiday.baseline_price ? parseFloat(holiday.baseline_price) : null,
       current_lowest_price: currentLowestPrice,
       threshold_percent: holiday.price_drop_threshold_percent ? parseFloat(holiday.price_drop_threshold_percent) : 10.0,
       has_active_alert: holiday.has_active_price_alert || false,

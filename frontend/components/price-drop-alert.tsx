@@ -12,7 +12,6 @@ interface PriceDropAlertProps {
   holidayName?: string
   showHolidayName?: boolean
   onResolve?: (alertId: string) => void
-  onViewFlights?: () => void
 }
 
 export default function PriceDropAlert({
@@ -20,7 +19,6 @@ export default function PriceDropAlert({
   holidayName,
   showHolidayName = false,
   onResolve,
-  onViewFlights,
 }: PriceDropAlertProps) {
   const [resolving, setResolving] = useState(false)
   const [resolved, setResolved] = useState(false)
@@ -121,15 +119,15 @@ export default function PriceDropAlert({
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {onViewFlights && (
-              <Button
-                onClick={onViewFlights}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white"
-              >
-                <ExternalLink className="h-4 w-4 mr-1.5" />
-                View Fares
-              </Button>
-            )}
+            <Button
+              onClick={() => {
+                document.getElementById("flights-section")?.scrollIntoView({ behavior: "smooth" })
+              }}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white"
+            >
+              <ExternalLink className="h-4 w-4 mr-1.5" />
+              View Fares
+            </Button>
             <Button
               variant="ghost"
               size="icon"

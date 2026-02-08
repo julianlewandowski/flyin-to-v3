@@ -147,10 +147,6 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                 alert={alert}
                 holidayName={holidayData.name}
                 showHolidayName={false}
-                onViewFlights={() => {
-                  // Scroll to flights section
-                  document.getElementById("flights-section")?.scrollIntoView({ behavior: "smooth" })
-                }}
               />
             ))}
           </div>
@@ -240,7 +236,7 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
           <PriceTrackingToggle
             holidayId={id}
             initialEnabled={holidayData.price_tracking_enabled || false}
-            initialLastPrice={holidayData.last_tracked_price || null}
+            initialLastPrice={holidayData.baseline_price || null}
             initialThreshold={holidayData.price_drop_threshold_percent || 10}
             hasFlights={flightData.length > 0}
           />

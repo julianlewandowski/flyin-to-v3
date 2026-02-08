@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { Bell, BellOff, TrendingDown, Mail, Calendar, Check } from "lucide-react"
+import { Bell, BellOff, TrendingDown, Mail, Calendar, Check, Loader2 } from "lucide-react"
 
 interface PriceTrackingToggleProps {
   holidayId: string
@@ -22,18 +22,45 @@ export default function PriceTrackingToggle({
   onStatusChange,
 }: PriceTrackingToggleProps) {
   const [enabled, setEnabled] = useState(initialEnabled)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleToggle = () => {
+  const handleToggle = async () => {
+    if (loading) return
+
     const newValue = !enabled
-    setEnabled(newValue)
-    onStatusChange?.(newValue)
-    // Demo mode: no API calls, just visual toggle
+    setLoading(true)
+    setError(null)
+
+    try {
+      const endpoint = newValue ? "enable" : "disable"
+      const response = await fetch(`/api/holidays/${holidayId}/price-tracking/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        ...(newValue && { body: JSON.stringify({ threshold_percent: initialThreshold }) }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.message || data.error || "Failed to update tracking")
+        return
+      }
+
+      setEnabled(newValue)
+      onStatusChange?.(newValue)
+    } catch (err) {
+      setError("Something went wrong. Please try again.")
+      console.error("[PriceTrackingToggle] Error:", err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <Card className={`overflow-hidden transition-all duration-500 ${
-      enabled 
-        ? "bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border-emerald-200 shadow-lg shadow-emerald-100/50" 
+      enabled
+        ? "bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 border-emerald-200 shadow-lg shadow-emerald-100/50"
         : "bg-gradient-to-br from-slate-50 via-gray-50 to-zinc-50 border-gray-200"
     }`}>
       <CardContent className="pt-5 pb-5">
@@ -42,8 +69,8 @@ export default function PriceTrackingToggle({
           <div className="flex items-center gap-4">
             {/* Icon container */}
             <div className={`relative h-12 w-12 rounded-xl flex items-center justify-center transition-all duration-500 ${
-              enabled 
-                ? "bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-200" 
+              enabled
+                ? "bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-200"
                 : "bg-gradient-to-br from-gray-300 to-gray-400"
             }`}>
               {enabled ? (
@@ -59,40 +86,52 @@ export default function PriceTrackingToggle({
                 </span>
               )}
             </div>
-            
+
             <div>
               {/* Title */}
               <h3 className="text-base font-bold text-gray-900">
                 Automatic Price Tracking
               </h3>
-              
+
               {/* Description */}
               <p className={`text-sm mt-0.5 transition-colors duration-300 ${
                 enabled ? "text-emerald-600" : "text-gray-500"
               }`}>
-                {enabled 
-                  ? "We'll notify you when prices drop" 
+                {enabled
+                  ? "We'll notify you when prices drop"
                   : "Get alerts when flights get cheaper"
                 }
               </p>
+
+              {/* Error message */}
+              {error && (
+                <p className="text-xs text-red-500 mt-1">{error}</p>
+              )}
             </div>
           </div>
-          
+
           {/* Right side: Toggle Button */}
           <button
             onClick={handleToggle}
+            disabled={loading}
             className={`
               relative px-6 py-3 rounded-xl font-semibold text-sm
               transition-all duration-300 ease-out
               transform active:scale-95
-              ${enabled 
-                ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300" 
+              disabled:opacity-70 disabled:cursor-not-allowed
+              ${enabled
+                ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300"
                 : "bg-white text-gray-700 border-2 border-gray-200 hover:border-emerald-300 hover:text-emerald-600 hover:bg-emerald-50"
               }
             `}
           >
             <span className="flex items-center gap-2">
-              {enabled ? (
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {enabled ? "Disabling..." : "Enabling..."}
+                </>
+              ) : enabled ? (
                 <>
                   <Check className="h-4 w-4" />
                   Tracking On
@@ -106,7 +145,7 @@ export default function PriceTrackingToggle({
             </span>
           </button>
         </div>
-        
+
         {/* Feature badges when enabled */}
         {enabled && (
           <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-emerald-200/50 animate-in fade-in slide-in-from-bottom-2 duration-500">
