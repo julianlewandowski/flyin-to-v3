@@ -1,27 +1,45 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Loader2, Sparkles, AlertCircle, CheckCircle2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import FlightResultsPoller from "@/components/flight-results-poller"
+import { ApiCreditsExhaustedModal } from "@/components/api-credits-exhausted-modal"
 
 export default function UnifiedFlightSearchButton({ 
   holidayId, 
   hasExistingFlights = false,
   initialFlightCount = 0,
+  userEmail,
+  initialShowCreditsModal,
 }: { 
   holidayId: string
   hasExistingFlights?: boolean
   initialFlightCount?: number
+  userEmail?: string
+  /** When true (e.g. from ?creditsExhausted=1 after create holiday), open the credits exhausted modal on mount */
+  initialShowCreditsModal?: boolean
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [searchJustCompleted, setSearchJustCompleted] = useState(false)
+  const [showCreditsExhaustedModal, setShowCreditsExhaustedModal] = useState(false)
+
+  // Open modal when landing with ?creditsExhausted=1 (e.g. after create holiday) and clear the URL
+  useEffect(() => {
+    if (!initialShowCreditsModal) return
+    setShowCreditsExhaustedModal(true)
+    if (typeof window !== "undefined" && window.location.search.includes("creditsExhausted=1")) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("creditsExhausted")
+      router.replace(url.pathname + url.search, { scroll: false })
+    }
+  }, [initialShowCreditsModal, router])
 
   async function runSearch() {
     setLoading(true)
@@ -39,51 +57,55 @@ export default function UnifiedFlightSearchButton({
         },
       })
 
-      // Check for timeout or gateway errors first
-      if (res.status === 504 || res.status === 502 || res.status === 503) {
-        const errorMsg = res.status === 504 
-          ? "Request timed out. The search is taking too long. Please try again with fewer destinations or a shorter date range."
-          : "Server error. Please try again in a moment."
-        console.error("[Unified Search Button] Gateway/Timeout error:", res.status, errorMsg)
-        setError(errorMsg)
-        return
-      }
-
-      // Try to parse JSON, but handle non-JSON responses gracefully
+      // Parse JSON when possible (503/502 from our API include credits-exhausted code)
       let data: any
       const contentType = res.headers.get("content-type")
-      
-      if (contentType && contentType.includes("application/json")) {
+      const isJson = contentType?.includes("application/json")
+
+      if (isJson) {
         try {
           data = await res.json()
         } catch (jsonError) {
-          // If JSON parsing fails, read as text to see what we got
           const textResponse = await res.text()
           console.error("[Unified Search Button] Failed to parse JSON response:", textResponse.substring(0, 200))
           setError(`Server returned invalid response. Status: ${res.status}`)
           return
         }
       } else {
-        // Non-JSON response (likely HTML error page)
+        // Non-JSON (e.g. 504 gateway page) – use status only
+        if (res.status === 504 || res.status === 502 || res.status === 503) {
+          setError(
+            res.status === 504
+              ? "Request timed out. The search is taking too long. Please try again with fewer destinations or a shorter date range."
+              : "Server error. Please try again in a moment."
+          )
+          return
+        }
         const textResponse = await res.text()
         console.error("[Unified Search Button] Non-JSON response:", textResponse.substring(0, 200))
-        const errorMsg = res.status >= 500
-          ? "Server error occurred. Please try again later."
-          : `Unexpected response format. Status: ${res.status}`
-        setError(errorMsg)
+        setError(res.status >= 500 ? "Server error occurred. Please try again later." : `Unexpected response format. Status: ${res.status}`)
         return
       }
-      
+
       console.log("[Unified Search Button] Response:", {
         ok: res.ok,
         status: res.status,
-        success: data.success,
-        offers_count: data.offers?.length || 0,
-        message: data.message,
+        success: data?.success,
+        offers_count: data?.offers?.length || 0,
+        message: data?.message,
+        code: data?.code,
       })
 
+      // Credits exhausted: show modal (we use 503 with JSON body for this)
+      if (data?.code === "SERPAPI_CREDITS_EXHAUSTED") {
+        setShowCreditsExhaustedModal(true)
+        setError(null)
+        setResult(data)
+        return
+      }
+
       if (!res.ok) {
-        const errorMsg = data.error || data.details || "Failed to search flights"
+        const errorMsg = data?.error || data?.details || "Failed to search flights"
         console.error("[Unified Search Button] Error:", errorMsg, data)
         setError(errorMsg)
         setResult(data)
@@ -131,6 +153,11 @@ export default function UnifiedFlightSearchButton({
 
   return (
     <div className="space-y-4">
+      <ApiCreditsExhaustedModal
+        open={showCreditsExhaustedModal}
+        onOpenChange={setShowCreditsExhaustedModal}
+        userEmail={userEmail}
+      />
       {/* Poll for flight results after search completes */}
       {searchJustCompleted && (
         <FlightResultsPoller

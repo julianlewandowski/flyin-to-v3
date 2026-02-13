@@ -62,6 +62,10 @@ export interface DeveloperAlertParams {
   context?: Record<string, unknown>
 }
 
+export interface ApiBackNotificationParams {
+  to: string
+}
+
 // ============================================================================
 // Email Templates
 // ============================================================================
@@ -317,6 +321,60 @@ export async function sendTrackingDisabledEmail(params: TrackingDisabledEmailPar
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err)
     logger.error("Exception sending tracking disabled email", err, { holidayId: params.holidayId })
+    return { success: false, error: errorMessage }
+  }
+}
+
+/**
+ * Send "flight search is back" notification to a user who subscribed while API was down.
+ */
+export async function sendApiBackNotification(params: ApiBackNotificationParams): Promise<EmailResult> {
+  if (!process.env.RESEND_API_KEY) {
+    logger.warn("RESEND_API_KEY not configured, skipping API back notification", { to: params.to })
+    return { success: false, error: "Email not configured" }
+  }
+
+  const subject = "Flyin.to flight search is back!"
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flight search is back</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">Flight search is back</h1>
+  </div>
+  <div style="padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+    <p>Hi,</p>
+    <p>You asked to be notified when Flyin.to flight search was available again. Good news &mdash; it is!</p>
+    <p><a href="${APP_URL}/dashboard" style="display: inline-block; background: #0ea5e9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">Go to Flyin.to</a></p>
+    <p style="color: #6b7280; font-size: 14px;">Thanks for your patience.</p>
+  </div>
+</body>
+</html>
+  `.trim()
+  const text = `Hi,\n\nYou asked to be notified when Flyin.to flight search was available again. Good news — it is!\n\nVisit ${APP_URL}/dashboard to search for flights.\n\nThanks for your patience.`
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: EMAIL_FROM,
+      to: params.to,
+      subject,
+      html,
+      text,
+    })
+    if (error) {
+      logger.error("Failed to send API back notification", error, { to: params.to })
+      return { success: false, error: error.message }
+    }
+    logger.info("API back notification sent", { messageId: data?.id, to: params.to })
+    return { success: true, messageId: data?.id }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    logger.error("Exception sending API back notification", err, { to: params.to })
     return { success: false, error: errorMessage }
   }
 }

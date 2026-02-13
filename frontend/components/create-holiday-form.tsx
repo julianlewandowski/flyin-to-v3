@@ -237,14 +237,18 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
             },
           })
           
-          const searchData = await searchResponse.json()
+          let searchData: { success?: boolean; code?: string; error?: string; message?: string; metadata?: { saved_to_db?: number } } = {}
+          try {
+            searchData = await searchResponse.json()
+          } catch {
+            // non-JSON response, ignore
+          }
           console.log("[Create Holiday] Auto-search response:", searchData)
           
           if (searchResponse.ok && searchData.success) {
             // Wait for flights to be saved to database
-            if (searchData.metadata?.saved_to_db > 0) {
+            if (searchData.metadata?.saved_to_db && searchData.metadata.saved_to_db > 0) {
               console.log(`[Create Holiday] Saved ${searchData.metadata.saved_to_db} flights, waiting for database...`)
-              // Wait longer to ensure database is ready
               await new Promise((resolve) => setTimeout(resolve, 3000))
             }
             
@@ -257,11 +261,15 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
                 },
               })
             } catch (insightsError) {
-              // Insights generation is optional, don't fail the whole flow
               console.warn("Failed to generate insights automatically:", insightsError)
             }
           } else {
-            console.warn("[Create Holiday] Search completed but no flights found:", searchData.error || searchData.message)
+            if (searchData?.code === "SERPAPI_CREDITS_EXHAUSTED") {
+              // Redirect so the holiday page can show the credits-exhausted modal
+              router.push(`/dashboard/holidays/${data.id}?creditsExhausted=1`)
+              return
+            }
+            console.warn("[Create Holiday] Search completed but no flights found:", searchData?.error || searchData?.message)
           }
         } catch (autoSearchError) {
           // Auto-search is best-effort, don't fail the holiday creation

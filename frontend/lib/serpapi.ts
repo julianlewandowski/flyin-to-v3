@@ -1,24 +1,59 @@
 /**
  * SerpApi Google Flights Adapter
+ * Supports multi-key rotation: set SERPAPI_KEYS=key1,key2,key3 for automatic failover.
+ * Falls back to single SERPAPI_KEY for backward compatibility.
  */
 
 import type { SerpApiFlightSearchParams, SerpApiFlightResult } from "./types"
 
 const SERPAPI_BASE_URL = "https://serpapi.com/search"
 
-function getApiKey(): string {
-  const apiKey = process.env.SERPAPI_KEY
-  if (!apiKey) {
-    throw new Error("SERPAPI_KEY is not configured in environment variables")
+/**
+ * Returns all configured SerpAPI keys.
+ * Reads SERPAPI_KEYS (comma-separated) first, falls back to single SERPAPI_KEY.
+ */
+function getApiKeys(): string[] {
+  const multiKeys = process.env.SERPAPI_KEYS
+  if (multiKeys) {
+    const keys = multiKeys.split(",").map(k => k.trim()).filter(Boolean)
+    if (keys.length > 0) return keys
   }
-  return apiKey
+  const singleKey = process.env.SERPAPI_KEY
+  if (singleKey) return [singleKey]
+  return []
+}
+
+/** Returns true if at least one SerpAPI key is configured. */
+export function hasSerpApiKeys(): boolean {
+  return getApiKeys().length > 0
+}
+
+/**
+ * Tracks keys that returned rate-limit errors during this serverless instance's lifetime.
+ * Resets automatically on cold start.
+ */
+const exhaustedKeys = new Set<string>()
+
+/** Returns true if the response indicates a rate-limit / quota error. */
+function isRateLimitError(status: number, body: string): boolean {
+  if (status === 429) return true
+  const lower = body.toLowerCase()
+  return (
+    lower.includes("rate limit") ||
+    lower.includes("quota") ||
+    lower.includes("exceeded") ||
+    lower.includes("too many requests")
+  )
 }
 
 export async function searchFlights(params: SerpApiFlightSearchParams): Promise<SerpApiFlightResult> {
-  const apiKey = getApiKey()
+  const keys = getApiKeys()
+  if (keys.length === 0) {
+    throw new Error("SERPAPI_KEYS is not configured in environment variables")
+  }
 
-  const searchParams = new URLSearchParams({
-    api_key: apiKey,
+  // Build URL params once (without api_key)
+  const baseParams = new URLSearchParams({
     engine: params.engine || "google_flights",
     departure_id: params.departure_id,
     arrival_id: params.arrival_id,
@@ -34,55 +69,94 @@ export async function searchFlights(params: SerpApiFlightSearchParams): Promise<
     ...(params.num && { num: params.num.toString() }),
   })
 
-  try {
-    const url = `${SERPAPI_BASE_URL}?${searchParams.toString()}`
-    console.log("[SerpApi] Making request to:", url.replace(/api_key=[^&]+/, "api_key=***"))
-    console.log("[SerpApi] Search params:", {
-      engine: params.engine,
-      departure_id: params.departure_id,
-      arrival_id: params.arrival_id,
-      outbound_date: params.outbound_date,
-      return_date: params.return_date,
-    })
+  console.log("[SerpApi] Search params:", {
+    engine: params.engine,
+    departure_id: params.departure_id,
+    arrival_id: params.arrival_id,
+    outbound_date: params.outbound_date,
+    return_date: params.return_date,
+  })
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    })
+  // Order keys: try non-exhausted first, then exhausted as fallback
+  const orderedKeys = [
+    ...keys.filter(k => !exhaustedKeys.has(k)),
+    ...keys.filter(k => exhaustedKeys.has(k)),
+  ]
 
-    console.log("[SerpApi] Response status:", response.status, response.statusText)
+  for (let i = 0; i < orderedKeys.length; i++) {
+    const apiKey = orderedKeys[i]
+    const keyIndex = keys.indexOf(apiKey) + 1
+    const keyLabel = `key${keyIndex}/${keys.length}`
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error("[SerpApi] Error response body:", errorText)
-      throw new Error(`SerpApi error: ${response.status} ${response.statusText}. ${errorText}`)
+    try {
+      const searchParams = new URLSearchParams(baseParams)
+      searchParams.set("api_key", apiKey)
+
+      const url = `${SERPAPI_BASE_URL}?${searchParams.toString()}`
+      console.log(`[SerpApi] [${keyLabel}] Making request to:`, url.replace(/api_key=[^&]+/, "api_key=***"))
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      })
+
+      console.log(`[SerpApi] [${keyLabel}] Response status:`, response.status, response.statusText)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error(`[SerpApi] [${keyLabel}] Error response body:`, errorText)
+
+        if (isRateLimitError(response.status, errorText)) {
+          console.warn(`[SerpApi] [${keyLabel}] Rate limit hit, rotating to next key...`)
+          exhaustedKeys.add(apiKey)
+          continue
+        }
+
+        // Non-rate-limit error (401, 400, etc.) — throw immediately, don't rotate
+        throw new Error(`SerpApi error: ${response.status} ${response.statusText}. ${errorText}`)
+      }
+
+      const data: SerpApiFlightResult = await response.json()
+
+      if (data.error) {
+        const errorStr = typeof data.error === "string" ? data.error : JSON.stringify(data.error)
+        if (isRateLimitError(200, errorStr)) {
+          console.warn(`[SerpApi] [${keyLabel}] Rate limit in response body, rotating to next key...`)
+          exhaustedKeys.add(apiKey)
+          continue
+        }
+        console.error(`[SerpApi] [${keyLabel}] API returned error in response:`, data.error)
+        throw new Error(`SerpApi API error: ${data.error}`)
+      }
+
+      // Success — log and return
+      console.log(`[SerpApi] [${keyLabel}] Response keys:`, Object.keys(data))
+      console.log(`[SerpApi] [${keyLabel}] Has best_flights:`, !!data.best_flights)
+      console.log(`[SerpApi] [${keyLabel}] Has other_flights:`, !!data.other_flights)
+      console.log(`[SerpApi] [${keyLabel}] Has flights:`, !!data.flights)
+
+      const flightCount = (data.best_flights?.length || 0) + (data.other_flights?.length || 0) + (data.flights?.length || 0)
+      console.log(`[SerpApi] [${keyLabel}] Total flights found:`, flightCount)
+
+      return data
+    } catch (error) {
+      // Re-throw non-rate-limit errors immediately
+      if (error instanceof Error && !error.message.includes("rate limit") && !error.message.includes("Rate limit")) {
+        console.error(`[SerpApi] [${keyLabel}] Search error:`, error.message)
+        console.error(`[SerpApi] [${keyLabel}] Error stack:`, error.stack)
+        throw error
+      }
+      // Rate-limit errors from catch: mark exhausted and continue
+      exhaustedKeys.add(apiKey)
+      console.warn(`[SerpApi] [${keyLabel}] Key exhausted, trying next...`)
     }
-
-    const data: SerpApiFlightResult = await response.json()
-
-    if (data.error) {
-      console.error("[SerpApi] API returned error in response:", data.error)
-      throw new Error(`SerpApi API error: ${data.error}`)
-    }
-
-    // Log response structure for debugging
-    console.log("[SerpApi] Response keys:", Object.keys(data))
-    console.log("[SerpApi] Has best_flights:", !!data.best_flights)
-    console.log("[SerpApi] Has other_flights:", !!data.other_flights)
-    console.log("[SerpApi] Has flights:", !!data.flights)
-    
-    const flightCount = (data.best_flights?.length || 0) + (data.other_flights?.length || 0) + (data.flights?.length || 0)
-    console.log("[SerpApi] Total flights found:", flightCount)
-
-    return data
-  } catch (error) {
-    console.error("[SerpApi] Search error:", error)
-    if (error instanceof Error) {
-      console.error("[SerpApi] Error message:", error.message)
-      console.error("[SerpApi] Error stack:", error.stack)
-    }
-    throw error
   }
+
+  // All keys exhausted
+  throw new Error(
+    `SerpApi rate limit: all ${keys.length} API keys exhausted. ` +
+    `Please wait for quota reset or add more keys to SERPAPI_KEYS.`
+  )
 }
 
 export async function searchFlightsParallel(

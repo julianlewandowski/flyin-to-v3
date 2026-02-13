@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: correct price-check cron workflow URL and HTTP method\n\nThe workflow was calling POST /price-tracking/cron/daily-check but the\nactual Next.js route is GET /api/cron/price-check.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(npx next build:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

@@ -8,7 +8,7 @@
 
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { searchFlightsParallel, generateSearchParams } from "@/lib/serpapi"
+import { searchFlightsParallel, generateSearchParams, hasSerpApiKeys } from "@/lib/serpapi"
 import type { SerpApiFlightSearchParams, FlightOffer } from "@/lib/types"
 import { normalizeSerpApiResponse, normalizeFlightOffers, type SearchContext } from "@/lib/normalize-flights"
 import { extractPreferences } from "@/lib/llm-preferences"
@@ -222,19 +222,19 @@ export async function POST(
 
   try {
     // Check API key configuration early
-    const serpApiKey = process.env.SERPAPI_KEY
-    if (!serpApiKey) {
-      console.error("[Unified Search] SERPAPI_KEY is not configured")
+    if (!hasSerpApiKeys()) {
+      console.error("[Unified Search] No SerpAPI keys configured")
       return NextResponse.json(
         {
+          code: "SERPAPI_CREDITS_EXHAUSTED",
           error: "SerpApi API key not configured",
-          details: "SERPAPI_KEY environment variable is missing",
-          suggestion: "Please set SERPAPI_KEY in your .env.local file",
+          details: "SERPAPI_KEYS environment variable is missing",
+          suggestion: "Please set SERPAPI_KEYS in your .env.local file",
         },
-        { status: 500 }
+        { status: 503 }
       )
     }
-    console.log("[Unified Search] SerpApi key configured:", serpApiKey.substring(0, 8) + "***")
+    console.log("[Unified Search] SerpApi keys configured")
 
     const { id } = await params
     console.log("[Unified Search] Holiday ID:", id)
@@ -811,13 +811,23 @@ export async function POST(
       })
     } catch (error) {
       console.error("[Unified Search] SerpApi search error:", error)
+      const msg = error instanceof Error ? error.message : String(error)
+      const isCreditsExhausted =
+        msg.includes("exhausted") ||
+        msg.includes("rate limit") ||
+        msg.includes("SERPAPI_KEYS") ||
+        msg.includes("quota") ||
+        msg.includes("not configured")
       return NextResponse.json(
         {
+          ...(isCreditsExhausted && { code: "SERPAPI_CREDITS_EXHAUSTED" as const }),
           error: "Flight search failed",
-          details: error instanceof Error ? error.message : "SerpApi request failed",
-          suggestion: "Please check your SERPAPI_KEY environment variable",
+          details: msg,
+          suggestion: isCreditsExhausted
+            ? "API credits are exhausted. You can support the project or get notified when search is back."
+            : "Please check your SERPAPI_KEYS environment variable",
         },
-        { status: 500 }
+        { status: isCreditsExhausted ? 503 : 500 }
       )
     }
 
@@ -991,17 +1001,27 @@ export async function POST(
       let errorMessage = "No flights found matching your criteria"
       let suggestion = ""
       
+      const isCreditsExhaustedResponse = errors.length > 0 && (() => {
+        const firstError = errors[0]
+        return (
+          firstError.error.includes("SERPAPI_KEYS") ||
+          firstError.error.includes("SERPAPI_KEY") ||
+          firstError.error.includes("429") ||
+          firstError.error.includes("rate limit") ||
+          (firstError.error.includes("all") && firstError.error.includes("exhausted"))
+        )
+      })()
       if (errors.length > 0) {
         const firstError = errors[0]
-        if (firstError.error.includes("SERPAPI_KEY")) {
+        if (firstError.error.includes("SERPAPI_KEYS") || firstError.error.includes("SERPAPI_KEY")) {
           errorMessage = "SerpApi API key is not configured"
-          suggestion = "Please set SERPAPI_KEY in your environment variables"
+          suggestion = "Please set SERPAPI_KEYS in your environment variables"
         } else if (firstError.error.includes("401") || firstError.error.includes("Unauthorized")) {
           errorMessage = "SerpApi authentication failed"
-          suggestion = "Please check your SERPAPI_KEY is valid"
-        } else if (firstError.error.includes("429") || firstError.error.includes("rate limit")) {
-          errorMessage = "SerpApi rate limit exceeded"
-          suggestion = "Please wait a moment and try again"
+          suggestion = "Please check your SERPAPI_KEYS are valid"
+        } else if (firstError.error.includes("429") || firstError.error.includes("rate limit") || (firstError.error.includes("all") && firstError.error.includes("exhausted"))) {
+          errorMessage = "SerpApi rate limit exceeded on all keys"
+          suggestion = "All API keys are exhausted. You can support the project or get notified when search is back."
         } else {
           errorMessage = `Search failed: ${firstError.error}`
           suggestion = "Please check your search parameters and try again"
@@ -1015,6 +1035,7 @@ export async function POST(
       }
       
       return NextResponse.json({
+        ...(isCreditsExhaustedResponse && { code: "SERPAPI_CREDITS_EXHAUSTED" as const }),
         success: false,
         offers: [],
         preferences,

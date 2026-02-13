@@ -139,6 +139,29 @@ After running the migration:
 3. ✅ Test the application to ensure everything works
 4. ✅ Check that flight searches are saving `deal_url` and `provider` fields
 
+## SerpAPI credits exhausted – notify subscribers (optional)
+
+When flight search is unavailable due to SerpAPI credits, users can subscribe to be emailed when it’s back. To enable this:
+
+1. **Run the migration**  
+   In Supabase SQL Editor, run `scripts/011_api_notify_subscribers.sql`. This creates the `api_notify_subscribers` table.
+
+2. **Set the secret for sending notifications**  
+   Add to your env (e.g. Vercel):
+   ```bash
+   NOTIFY_API_BACK_SECRET=your-random-secret-here
+   ```
+
+3. **When the site is usable again**, notify all subscribers by calling:
+   ```bash
+   curl -X POST https://your-app.vercel.app/api/notify-api-back/send \
+     -H "x-notify-secret: your-random-secret-here"
+   ```
+   This sends a “Flight search is back” email to each subscriber (via Resend) and removes them from the list. Ensure `RESEND_API_KEY` and `EMAIL_FROM` are set so emails can be sent.
+
+
+
+
 
 
 

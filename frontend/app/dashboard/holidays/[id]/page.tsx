@@ -35,8 +35,16 @@ function getTimeAgo(dateString: string): string {
   return date.toLocaleDateString()
 }
 
-export default async function HolidayDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function HolidayDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
   const { id } = await params
+  const resolvedSearchParams = await searchParams
+  const showCreditsModal = resolvedSearchParams?.creditsExhausted === "1"
   const supabase = await createClient()
 
   const {
@@ -333,6 +341,8 @@ export default async function HolidayDetailPage({ params }: { params: Promise<{ 
                   holidayId={id} 
                   hasExistingFlights={flightData.length > 0}
                   initialFlightCount={flightData.length}
+                  userEmail={user?.email}
+                  initialShowCreditsModal={showCreditsModal}
                 />
                 {flightData.length > 0 && hasAiResults && <VerifyFlightsButton holidayId={id} variant="outline" />}
               </div>

@@ -1,13 +1,11 @@
 -- Add placeholder holidays (will be associated with the first user who signs up)
 -- Note: Replace 'YOUR_USER_ID' with actual user_id after signing up, or this will use auth.uid()
-
 -- Insert sample holidays
 INSERT INTO public.holidays (user_id, name, origin, destinations, start_date, end_date, budget)
 VALUES 
   (auth.uid(), 'Summer Europe Trip', 'NYC', ARRAY['Paris', 'Rome', 'Barcelona'], '2025-07-01', '2025-07-15', 3500.00),
   (auth.uid(), 'Southeast Asia Adventure', 'LAX', ARRAY['Bangkok', 'Singapore', 'Bali'], '2025-09-10', '2025-09-25', 2800.00),
   (auth.uid(), 'Weekend in Tokyo', 'SFO', ARRAY['Tokyo'], '2025-06-15', '2025-06-20', 1500.00);
-
 -- Insert sample flights for the holidays
 -- Note: We'll use the holiday IDs from the inserted holidays above
 WITH holiday_ids AS (
