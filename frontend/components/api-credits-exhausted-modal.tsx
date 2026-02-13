@@ -71,7 +71,7 @@ export function ApiCreditsExhaustedModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md bg-white dark:bg-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="text-amber-600">Flight search temporarily unavailable</span>
@@ -99,8 +99,8 @@ export function ApiCreditsExhaustedModal({
               <Coffee className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-foreground">Support API costs</p>
-              <p className="text-sm text-muted-foreground">Buy me a coffee to help cover search API costs</p>
+              <p className="font-medium text-foreground">Buy me a coffee to help cover costs</p>
+              <p className="text-sm text-muted-foreground">Support the project</p>
             </div>
             <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
           </a>
