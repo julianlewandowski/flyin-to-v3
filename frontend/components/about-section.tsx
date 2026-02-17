@@ -31,30 +31,35 @@ export const AboutSection = () => {
       icon: Globe,
       href: "https://julianlew.com",
       label: "my site",
+      showLabel: true,
       color: "hover:text-blue-500"
     },
     {
       icon: Linkedin,
       href: "https://www.linkedin.com/in/julianlew/",
       label: "LinkedIn",
+      showLabel: false,
       color: "hover:text-blue-600"
     },
     {
       icon: Github,
       href: "https://github.com/julianlewandowski",
       label: "GitHub",
+      showLabel: false,
       color: "hover:text-gray-800"
     },
     {
       icon: Twitter,
       href: "https://x.com/julianlewo",
       label: "X",
+      showLabel: false,
       color: "hover:text-black"
     },
     {
       icon: Mail,
       href: "mailto:hi@julianlew.com",
       label: "Email",
+      showLabel: false,
       color: "hover:text-red-500"
     }
   ];
@@ -146,10 +151,11 @@ export const AboutSection = () => {
                         href={link.href}
                         target="_blank"
                         rel="noopener noreferrer"
+                        title={link.label}
                         className={`group flex items-center gap-2 px-5 py-3 bg-gray-100 rounded-sm border border-gray-300 hover:border-orange-500 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105 ${link.color}`}
                       >
                         <Icon className="w-5 h-5 transition-transform duration-300 group-hover:scale-110" />
-                        <span className="text-sm font-medium">{link.label}</span>
+                        {link.showLabel && <span className="text-sm font-medium">{link.label}</span>}
                       </a>
                     );
                   })}
