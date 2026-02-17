@@ -19,14 +19,14 @@ interface Plane {
 }
 
 const PASTEL_COLORS = [
-  "#FFB3BA", // Pink
-  "#FFDFBA", // Peach
-  "#FFFFBA", // Yellow
-  "#BAFFC9", // Mint
-  "#BAE1FF", // Blue
-  "#E6E6FA", // Lavender
-  "#F0E68C", // Khaki
-  "#D8BFD8", // Thistle
+  "#FFEBEE", // Very light pink
+  "#FFF3E8", // Very light peach
+  "#FFFCF5", // Very light cream
+  "#F0FBF4", // Very light mint
+  "#F0F8FF", // Very light sky
+  "#F5F2FA", // Very light lavender
+  "#FAF8F0", // Very light wheat
+  "#FAF5FA", // Very light lilac
 ]
 
 export function AnimatedBackgroundPlanes() {
