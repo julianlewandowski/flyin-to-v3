@@ -157,9 +157,9 @@ export function AnimatedBackgroundPlanes() {
             {/* Plane */}
             {plane.state === "flying" && (
               <g transform={`translate(${plane.currentX}, ${plane.currentY}) rotate(${plane.angle})`}>
-                {/* Minimalistic Plane Icon (Arrow/Triangle) */}
+                {/* Minimalistic Plane Icon */}
                 <path
-                  d="M 12 0 L -8 8 L -4 0 L -8 -8 Z"
+                  d="M 12 0 L 8 2 L 4 2 L 0 10 L -3 10 L 0 2 L -6 2 L -9 6 L -11 6 L -9 1 L -11 0 L -9 -1 L -11 -6 L -9 -6 L -6 -2 L 0 -2 L -3 -10 L 0 -10 L 4 -2 L 8 -2 Z"
                   fill={plane.color}
                 />
               </g>
