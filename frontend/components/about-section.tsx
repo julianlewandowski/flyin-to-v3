@@ -127,7 +127,7 @@ export const AboutSection = () => {
                   <h3 className="text-2xl md:text-3xl font-bold text-gray-900">
                     Built by{" "}
                     <a 
-                      href="https://julianlewandowski.com" 
+                      href="https://julianlew.com" 
                       target="_blank" 
                       rel="noopener noreferrer" 
                       className="text-orange-500 hover:text-orange-600 transition-colors duration-300 underline decoration-2 underline-offset-4"
