@@ -58,7 +58,7 @@ export function AnimatedBackgroundPlanes() {
       if (!lastSpawnTime.current) lastSpawnTime.current = time
 
       // Spawn new plane
-      if (time - lastSpawnTime.current > 2000 + Math.random() * 3000) { // Every 2-5 seconds
+      if (time - lastSpawnTime.current > 800 + Math.random() * 1500) { // Every 0.8-2.3 seconds
         spawnPlane()
         lastSpawnTime.current = time
       }
@@ -150,7 +150,7 @@ export function AnimatedBackgroundPlanes() {
               x2={plane.currentX}
               y2={plane.currentY}
               stroke={plane.color}
-              strokeWidth="2"
+              strokeWidth="4"
               strokeLinecap="round"
               style={{ transition: 'opacity 0.5s ease-out' }}
             />
@@ -159,7 +159,7 @@ export function AnimatedBackgroundPlanes() {
               <g transform={`translate(${plane.currentX}, ${plane.currentY}) rotate(${plane.angle})`}>
                 {/* Minimalistic Plane Icon (Arrow/Triangle) */}
                 <path
-                  d="M 6 0 L -4 4 L -2 0 L -4 -4 Z"
+                  d="M 12 0 L -8 8 L -4 0 L -8 -8 Z"
                   fill={plane.color}
                 />
               </g>
