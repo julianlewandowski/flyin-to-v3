@@ -813,10 +813,9 @@ export async function POST(
       console.error("[Unified Search] SerpApi search error:", error)
       const msg = error instanceof Error ? error.message : String(error)
       const isCreditsExhausted =
-        msg.includes("exhausted") ||
-        msg.includes("rate limit") ||
-        msg.includes("SERPAPI_KEYS") ||
         msg.includes("quota") ||
+        msg.includes("Quota") ||
+        msg.includes("SERPAPI_KEYS") ||
         msg.includes("not configured")
       return NextResponse.json(
         {
@@ -1006,9 +1005,8 @@ export async function POST(
         return (
           firstError.error.includes("SERPAPI_KEYS") ||
           firstError.error.includes("SERPAPI_KEY") ||
-          firstError.error.includes("429") ||
-          firstError.error.includes("rate limit") ||
-          (firstError.error.includes("all") && firstError.error.includes("exhausted"))
+          firstError.error.includes("quota") ||
+          firstError.error.includes("Quota")
         )
       })()
       if (errors.length > 0) {
@@ -1019,9 +1017,12 @@ export async function POST(
         } else if (firstError.error.includes("401") || firstError.error.includes("Unauthorized")) {
           errorMessage = "SerpApi authentication failed"
           suggestion = "Please check your SERPAPI_KEYS are valid"
-        } else if (firstError.error.includes("429") || firstError.error.includes("rate limit") || (firstError.error.includes("all") && firstError.error.includes("exhausted"))) {
-          errorMessage = "SerpApi rate limit exceeded on all keys"
+        } else if (firstError.error.includes("quota") || firstError.error.includes("Quota")) {
+          errorMessage = "SerpApi quota exceeded on all keys"
           suggestion = "All API keys are exhausted. You can support the project or get notified when search is back."
+        } else if (firstError.error.includes("rate limit") || firstError.error.includes("Rate limit") || firstError.error.includes("429")) {
+          errorMessage = "SerpApi rate limit exceeded (temporary)"
+          suggestion = "Please wait a moment and try again."
         } else {
           errorMessage = `Search failed: ${firstError.error}`
           suggestion = "Please check your search parameters and try again"

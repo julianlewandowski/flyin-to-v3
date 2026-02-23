@@ -79,8 +79,8 @@ export function ApiCreditsExhaustedModal({
           <DialogDescription asChild>
             <div className="space-y-2 text-left">
               <p>
-                We&apos;ve run out of API credits for flight search. This project is fully bootstrapped
-                and run by a 19-year-old student, so every bit of support helps keep the lights on.
+                i've run out of free api credits for the month lol (must be higher traffic than i initially expected), i'm a 19 y/o bootstrapped student in ireland - if you wanna help keep it up, please feel free to support.
+                 otherwise, i can send you an email when it's back up :)
               </p>
               <p className="font-medium text-foreground">You can:</p>
             </div>
@@ -114,7 +114,7 @@ export function ApiCreditsExhaustedModal({
             {isSubmitted ? (
               <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
-                You&apos;re on the list! We&apos;ll email you when flight search is available again.
+                You&apos;re on the list! I&apos;ll email you when flight search is available again.
               </div>
             ) : (
               <form onSubmit={handleNotifySubmit} className="space-y-3">

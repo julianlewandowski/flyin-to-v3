@@ -34,15 +34,25 @@ export function hasSerpApiKeys(): boolean {
  */
 const exhaustedKeys = new Set<string>()
 
-/** Returns true if the response indicates a rate-limit / quota error. */
-function isRateLimitError(status: number, body: string): boolean {
+/** Returns true if the response indicates a temporary rate limit (429). */
+function isTemporaryRateLimit(status: number, body: string): boolean {
   if (status === 429) return true
   const lower = body.toLowerCase()
   return (
     lower.includes("rate limit") ||
-    lower.includes("quota") ||
-    lower.includes("exceeded") ||
     lower.includes("too many requests")
+  )
+}
+
+/** Returns true if the response indicates a permanent quota exhaustion (402/403). */
+function isQuotaExhausted(status: number, body: string): boolean {
+  if (status === 402) return true
+  const lower = body.toLowerCase()
+  return (
+    lower.includes("quota") ||
+    lower.includes("payment required") ||
+    lower.includes("plan limit") ||
+    (lower.includes("exceeded") && lower.includes("search")) // "Search quota exceeded" vs "Rate limit exceeded"
   )
 }
 
@@ -83,6 +93,8 @@ export async function searchFlights(params: SerpApiFlightSearchParams): Promise<
     ...keys.filter(k => exhaustedKeys.has(k)),
   ]
 
+  let quotaErrorHit = false
+
   for (let i = 0; i < orderedKeys.length; i++) {
     const apiKey = orderedKeys[i]
     const keyIndex = keys.indexOf(apiKey) + 1
@@ -106,9 +118,16 @@ export async function searchFlights(params: SerpApiFlightSearchParams): Promise<
         const errorText = await response.text()
         console.error(`[SerpApi] [${keyLabel}] Error response body:`, errorText)
 
-        if (isRateLimitError(response.status, errorText)) {
-          console.warn(`[SerpApi] [${keyLabel}] Rate limit hit, rotating to next key...`)
+        if (isTemporaryRateLimit(response.status, errorText)) {
+          console.warn(`[SerpApi] [${keyLabel}] Rate limit hit (temporary), rotating to next key...`)
           exhaustedKeys.add(apiKey)
+          continue
+        }
+
+        if (isQuotaExhausted(response.status, errorText)) {
+          console.warn(`[SerpApi] [${keyLabel}] Quota exhausted (permanent), rotating to next key...`)
+          exhaustedKeys.add(apiKey)
+          quotaErrorHit = true
           continue
         }
 
@@ -120,11 +139,20 @@ export async function searchFlights(params: SerpApiFlightSearchParams): Promise<
 
       if (data.error) {
         const errorStr = typeof data.error === "string" ? data.error : JSON.stringify(data.error)
-        if (isRateLimitError(200, errorStr)) {
+        
+        if (isTemporaryRateLimit(200, errorStr)) {
           console.warn(`[SerpApi] [${keyLabel}] Rate limit in response body, rotating to next key...`)
           exhaustedKeys.add(apiKey)
           continue
         }
+
+        if (isQuotaExhausted(200, errorStr)) {
+          console.warn(`[SerpApi] [${keyLabel}] Quota exhausted in response body, rotating to next key...`)
+          exhaustedKeys.add(apiKey)
+          quotaErrorHit = true
+          continue
+        }
+
         console.error(`[SerpApi] [${keyLabel}] API returned error in response:`, data.error)
         throw new Error(`SerpApi API error: ${data.error}`)
       }
@@ -141,21 +169,35 @@ export async function searchFlights(params: SerpApiFlightSearchParams): Promise<
       return data
     } catch (error) {
       // Re-throw non-rate-limit errors immediately
-      if (error instanceof Error && !error.message.includes("rate limit") && !error.message.includes("Rate limit")) {
+      if (error instanceof Error && 
+          !error.message.includes("rate limit") && 
+          !error.message.includes("Rate limit") &&
+          !error.message.includes("quota") &&
+          !error.message.includes("Quota")) {
         console.error(`[SerpApi] [${keyLabel}] Search error:`, error.message)
         console.error(`[SerpApi] [${keyLabel}] Error stack:`, error.stack)
         throw error
       }
-      // Rate-limit errors from catch: mark exhausted and continue
+      // Rate-limit/Quota errors from catch: mark exhausted and continue
       exhaustedKeys.add(apiKey)
+      if (error instanceof Error && (error.message.includes("quota") || error.message.includes("Quota"))) {
+        quotaErrorHit = true
+      }
       console.warn(`[SerpApi] [${keyLabel}] Key exhausted, trying next...`)
     }
   }
 
   // All keys exhausted
+  if (quotaErrorHit) {
+    throw new Error(
+      `SerpApi quota: all ${keys.length} API keys exhausted (quota limit reached). ` +
+      `Please upgrade your plan or add more keys.`
+    )
+  }
+
   throw new Error(
-    `SerpApi rate limit: all ${keys.length} API keys exhausted. ` +
-    `Please wait for quota reset or add more keys to SERPAPI_KEYS.`
+    `SerpApi rate limit: all ${keys.length} API keys exhausted (temporary rate limit). ` +
+    `Please wait a moment and try again.`
   )
 }
 
@@ -329,5 +371,3 @@ export function generateSearchParams(holiday: {
 
   return params
 }
-
-
