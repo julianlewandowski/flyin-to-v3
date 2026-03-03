@@ -88,7 +88,11 @@ export function ApiCreditsExhaustedModal({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Buy Me a Coffee */}
+
+
+
+
+          
           <a
             href={BUY_ME_A_COFFEE_URL}
             target="_blank"
