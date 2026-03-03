@@ -85,14 +85,14 @@ export function ApiCreditsExhaustedModal({
               <p className="font-medium text-foreground">You can:</p>
             </div>
           </DialogDescription>
+
+
         </DialogHeader>
 
+
+        {/*Buy Me a Coffee*/}
+
         <div className="space-y-4 py-2">
-
-
-
-
-          
           <a
             href={BUY_ME_A_COFFEE_URL}
             target="_blank"
