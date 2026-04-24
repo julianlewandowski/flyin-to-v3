@@ -139,11 +139,12 @@ export default async function HolidayDetailPage({
 
       {/* Main Content */}
       <main className={`flex-1 container mx-auto px-6 pb-16 animate-fade-in-up ${holidayData.has_active_price_alert ? "pt-24" : "pt-20"}`}>
-        <Link href="/dashboard">
-          <button className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary mb-6 transition-colors duration-300">
-            <ArrowLeft className="h-3 w-3" />
-            Back to Dashboard
-          </button>
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-primary mb-6 transition-colors duration-200 group"
+        >
+          <ArrowLeft className="h-3 w-3 transition-transform duration-200 group-hover:-translate-x-0.5" />
+          Back to Dashboard
         </Link>
 
         {/* Price Drop Alert - Show prominently at the top if active */}
@@ -349,13 +350,16 @@ export default async function HolidayDetailPage({
             </div>
 
             {flightData.length === 0 ? (
-              <Card className="border-dashed border-border bg-secondary/30">
-                <CardContent className="flex flex-col items-center justify-center py-24 text-center">
-                  <div className="h-20 w-20 rounded-full bg-secondary flex items-center justify-center mb-6 text-muted-foreground animate-float-slow">
-                    <Plane className="h-10 w-10" />
+              <Card className="border-dashed border-2 border-slate-300 bg-gradient-to-b from-slate-50 to-white">
+                <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="relative mb-5">
+                    <div className="absolute inset-0 rounded-full bg-blue-400/10 blur-xl animate-pulse-slow" />
+                    <div className="relative h-16 w-16 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-blue-500 shadow-sm animate-float-slow">
+                      <Plane className="h-8 w-8" />
+                    </div>
                   </div>
-                  <h3 className="text-xl font-bold mb-2 text-foreground">No flights found yet</h3>
-                  <p className="text-muted-foreground max-w-md leading-relaxed">
+                  <h3 className="text-xl font-bold mb-2 text-foreground tracking-tight">No flights found yet</h3>
+                  <p className="text-muted-foreground max-w-md leading-relaxed text-sm">
                     {holidayData.destinations && holidayData.destinations.length > 0
                       ? "Click 'Search Flights' above to find flights to your destinations"
                       : needsAiScan

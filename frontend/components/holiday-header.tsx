@@ -9,20 +9,20 @@ interface HolidayHeaderProps {
 
 export default function HolidayHeader({ userEmail }: HolidayHeaderProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-border/50 supports-[backdrop-filter]:bg-white/60 transition-all duration-300">
-      <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-        <Link href="/dashboard" className="flex items-center gap-3 transition-transform hover:scale-105 duration-200">
-          <img 
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/70 supports-[backdrop-filter]:bg-white/60 transition-all duration-300">
+      <div className="container mx-auto px-6 py-3 flex items-center justify-between">
+        <Link href="/dashboard" className="flex items-center gap-3 transition-transform hover:scale-[1.03] duration-200">
+          <img
             src={flyinLogo.src || flyinLogo}
-            alt="Flyin.to" 
-            className="h-8 w-auto"
+            alt="Flyin.to"
+            className="h-7 w-auto"
           />
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <InlinePriceAlertIndicator />
           <span className="text-sm font-medium text-muted-foreground hidden md:block">{userEmail}</span>
           <form action="/auth/signout" method="post">
-            <Button variant="ghost" size="sm" className="rounded-full">
+            <Button variant="ghost" size="sm" aria-label="Sign out">
               Sign out
             </Button>
           </form>

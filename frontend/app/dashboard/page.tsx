@@ -38,20 +38,20 @@ export default async function DashboardPage() {
       <GlobalPriceAlertBanner className="fixed top-0 left-0 right-0 z-[60]" />
       
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-border/50 supports-[backdrop-filter]:bg-white/60 mt-0 transition-all [.has-alerts_&]:mt-10">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3 transition-transform hover:scale-105 duration-200">
-            <img 
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/70 supports-[backdrop-filter]:bg-white/60 mt-0 transition-all [.has-alerts_&]:mt-10">
+        <div className="container mx-auto px-6 py-3 flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center gap-3 transition-transform hover:scale-[1.03] duration-200">
+            <img
               src={flyinLogo.src || flyinLogo}
-              alt="Flyin.to" 
-              className="h-8 w-auto"
+              alt="Flyin.to"
+              className="h-7 w-auto"
             />
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <InlinePriceAlertIndicator />
             <span className="text-sm font-medium text-muted-foreground hidden md:block">{user.email}</span>
             <form action="/auth/signout" method="post">
-              <Button variant="ghost" size="sm" className="rounded-full">
+              <Button variant="ghost" size="sm" aria-label="Sign out">
                 Sign out
               </Button>
             </form>
@@ -84,17 +84,20 @@ export default async function DashboardPage() {
 
         {userHolidays.length === 0 ? (
           <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-            <Card className="border-dashed border-border bg-secondary/30">
-              <CardContent className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="h-24 w-24 rounded-full bg-blue-50 flex items-center justify-center mb-6 text-blue-500 animate-float-slow">
-                  <Plane className="h-10 w-10" />
+            <Card className="border-dashed border-2 border-slate-300 bg-gradient-to-b from-slate-50 to-white">
+              <CardContent className="flex flex-col items-center justify-center py-20 md:py-24 text-center">
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 rounded-full bg-blue-400/20 blur-xl animate-pulse-slow" />
+                  <div className="relative h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 animate-float-slow">
+                    <Plane className="h-9 w-9" />
+                  </div>
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-foreground">No holidays yet</h3>
+                <h3 className="text-2xl md:text-3xl font-bold mb-3 text-foreground tracking-tight">No holidays yet</h3>
                 <p className="text-muted-foreground mb-8 max-w-md leading-relaxed">
                   Create your first holiday to start tracking flight prices and finding the best deals across multiple destinations.
                 </p>
                 <Link href="/dashboard/create">
-                  <Button size="lg" className="shadow-lg hover:scale-105 transition-transform">
+                  <Button size="lg" className="shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30">
                     <Plus className="h-5 w-5 mr-2" />
                     Create Your First Holiday
                   </Button>
@@ -111,8 +114,8 @@ export default async function DashboardPage() {
                 className="block animate-fade-in-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <Card className={`group cursor-pointer h-full hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${
-                  holiday.has_active_price_alert ? "ring-2 ring-emerald-400 border-emerald-400 bg-emerald-50/10" : ""
+                <Card className={`group cursor-pointer h-full hover:border-blue-300 hover:shadow-lg hover:-translate-y-0.5 ${
+                  holiday.has_active_price_alert ? "ring-2 ring-emerald-400/60 border-emerald-300 bg-emerald-50/30" : ""
                 }`}>
                   <CardHeader>
                     <div className="flex items-start justify-between gap-2">
