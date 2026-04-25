@@ -29,13 +29,20 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Default to a search window starting in 4 weeks, ending 10 weeks out — a common
+  // sweet spot for fare deals and avoids the "set dates from scratch" friction.
+  const today = new Date()
+  const defaultStart = new Date(today.getTime() + 28 * 24 * 60 * 60 * 1000)
+  const defaultEnd = new Date(today.getTime() + 70 * 24 * 60 * 60 * 1000)
+  const toDateInput = (d: Date) => d.toISOString().slice(0, 10)
+
   const [name, setName] = useState("")
   const [origins, setOrigins] = useState<string[]>([""])
   const [useAiDiscovery, setUseAiDiscovery] = useState(false)
   const [aiDiscoveryPrompt, setAiDiscoveryPrompt] = useState("")
   const [destinations, setDestinations] = useState<string[]>([""])
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
+  const [startDate, setStartDate] = useState(toDateInput(defaultStart))
+  const [endDate, setEndDate] = useState(toDateInput(defaultEnd))
   const [tripDurationMin, setTripDurationMin] = useState("7")
   const [tripDurationMax, setTripDurationMax] = useState("14")
   const [budget, setBudget] = useState("")
@@ -224,68 +231,10 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
 
       if (insertError) throw insertError
 
-      // Automatically trigger unified flight search and insights generation
-      // Only if we have destinations (either from AI discovery or manual input)
-      if (validDestinations.length > 0) {
-        try {
-          // Step 1: Trigger unified flight search (await to ensure it completes)
-          console.log("[Create Holiday] Starting automatic flight search with destinations:", validDestinations)
-          const searchResponse = await fetch(`/api/holidays/${data.id}/search-flights-unified`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          })
-          
-          let searchData: { success?: boolean; code?: string; error?: string; message?: string; metadata?: { saved_to_db?: number } } = {}
-          try {
-            searchData = await searchResponse.json()
-          } catch {
-            // non-JSON response, ignore
-          }
-          console.log("[Create Holiday] Auto-search response:", searchData)
-          
-          if (searchResponse.ok && searchData.success) {
-            // Wait for flights to be saved to database
-            if (searchData.metadata?.saved_to_db && searchData.metadata.saved_to_db > 0) {
-              console.log(`[Create Holiday] Saved ${searchData.metadata.saved_to_db} flights, waiting for database...`)
-              await new Promise((resolve) => setTimeout(resolve, 3000))
-            }
-            
-            // Step 2: Generate insights (only if flights were found)
-            try {
-              await fetch(`/api/holidays/${data.id}/generate-insights`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              })
-            } catch (insightsError) {
-              console.warn("Failed to generate insights automatically:", insightsError)
-            }
-          } else {
-            if (searchData?.code === "SERPAPI_CREDITS_EXHAUSTED") {
-              // Redirect so the holiday page can show the credits-exhausted modal
-              router.push(`/dashboard/holidays/${data.id}?creditsExhausted=1`)
-              return
-            }
-            console.warn("[Create Holiday] Search completed but no flights found:", searchData?.error || searchData?.message)
-          }
-        } catch (autoSearchError) {
-          // Auto-search is best-effort, don't fail the holiday creation
-          // User can manually trigger search from the dashboard if needed
-          console.warn("Failed to automatically search flights:", autoSearchError)
-        }
-      } else {
-        console.warn("[Create Holiday] No destinations to search for, skipping automatic flight search")
-      }
-
-      // Redirect to dashboard - page will auto-refresh to show results
-      router.push(`/dashboard/holidays/${data.id}`)
-      // Force a refresh after navigation to ensure flights are loaded
-      setTimeout(() => {
-        router.refresh()
-      }, 1000)
+      // Redirect immediately. The detail page handles the flight search
+      // asynchronously and shows live progress instead of blocking here.
+      const flag = validDestinations.length > 0 ? "?creating=1" : ""
+      router.push(`/dashboard/holidays/${data.id}${flag}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create holiday")
       setIsLoading(false)
@@ -295,8 +244,8 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
   return (
     <Card className="border-border shadow-xl">
       <CardHeader className="pb-8 border-b border-border/50">
-        <CardTitle className="text-2xl font-bold">Holiday Details</CardTitle>
-        <CardDescription>Tell us about your travel plans so we can find the best deals</CardDescription>
+        <CardTitle className="text-2xl font-bold">Trip details</CardTitle>
+        <CardDescription>The more flexibility you give us, the better the deals we find.</CardDescription>
       </CardHeader>
       <CardContent className="pt-8">
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -591,7 +540,7 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
             <Button type="submit" disabled={isLoading} className="flex-1 h-12 text-lg shadow-lg shadow-primary/20">
               {isLoading ? (
                 <>
-                  <Sparkles className="h-5 w-5 mr-2 animate-pulse" />
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                   Creating...
                 </>
               ) : (
@@ -599,11 +548,6 @@ export default function CreateHolidayForm({ userId }: CreateHolidayFormProps) {
               )}
             </Button>
           </div>
-          {isLoading && (
-            <p className="text-sm text-muted-foreground text-center animate-pulse">
-              This may take a moment while we search for flights and generate insights...
-            </p>
-          )}
         </form>
       </CardContent>
     </Card>

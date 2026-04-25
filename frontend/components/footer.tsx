@@ -9,17 +9,17 @@ export const Footer = () => {
         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
           {/* Logo and Copyright */}
           <div className="flex items-center gap-4">
-            <img 
+            <img
               src={flyinLogo.src || flyinLogo}
-              alt="Flyin.to" 
+              alt="Flyin.to"
               className="h-8 w-auto"
             />
             <div className="hidden md:block border-l border-border pl-4">
               <p className="text-sm text-muted-foreground">
-                © {new Date().getFullYear()} Flyin.to. All rights reserved.
+                © {new Date().getFullYear()} Flyin.to
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Flight hunting made easy.
+                Stop refreshing Skyscanner. We'll tell you when prices drop.
               </p>
             </div>
           </div>
@@ -27,10 +27,10 @@ export const Footer = () => {
           {/* Copyright - Mobile */}
           <div className="md:hidden text-center">
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Flyin.to. All rights reserved.
+              © {new Date().getFullYear()} Flyin.to
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Flight hunting made easy.
+              Stop refreshing Skyscanner. We'll tell you when prices drop.
             </p>
           </div>
 
@@ -79,7 +79,7 @@ export const Footer = () => {
         {/* Additional Info */}
         <div className="mt-4 text-center">
           <p className="text-xs text-muted-foreground">
-            Flyin.to is in open beta. Works still under way. If you see any bugs, please send to support@flyin.to.
+            Open beta — feedback welcome at <a href="mailto:support@flyin.to" className="hover:text-primary transition-colors">support@flyin.to</a>.
           </p>
         </div>
       </div>

@@ -171,12 +171,12 @@ export default function UnifiedFlightSearchButton({
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            Searching...
+            Searching…
           </>
         ) : (
           <>
             <Sparkles className="h-4 w-4 mr-2" />
-            {hasExistingFlights ? "Re-search Flights" : "AI Unified Flight Search"}
+            {hasExistingFlights ? "Refresh Flights" : "Search Flights"}
           </>
         )}
       </Button>

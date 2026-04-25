@@ -90,7 +90,7 @@ export default function PriceTrackingToggle({
             <div>
               {/* Title */}
               <h3 className="text-base font-bold text-gray-900">
-                Automatic Price Tracking
+                {enabled ? "Watching this trip" : "Watch this trip"}
               </h3>
 
               {/* Description */}
@@ -98,8 +98,8 @@ export default function PriceTrackingToggle({
                 enabled ? "text-emerald-600" : "text-gray-500"
               }`}>
                 {enabled
-                  ? "We'll notify you when prices drop"
-                  : "Get alerts when flights get cheaper"
+                  ? "Daily price checks. We'll email you the moment a fare drops."
+                  : "We'll check prices every day and email you when a fare drops."
                 }
               </p>
 
@@ -134,12 +134,12 @@ export default function PriceTrackingToggle({
               ) : enabled ? (
                 <>
                   <Check className="h-4 w-4" />
-                  Tracking On
+                  Watching
                 </>
               ) : (
                 <>
                   <Bell className="h-4 w-4" />
-                  Enable Tracking
+                  Watch this trip
                 </>
               )}
             </span>

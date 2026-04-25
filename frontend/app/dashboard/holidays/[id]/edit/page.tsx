@@ -2,9 +2,8 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import EditHolidayForm from "@/components/edit-holiday-form"
+import HolidayHeader from "@/components/holiday-header"
 import type { Holiday } from "@/lib/types"
-import flyinLogo from "@/app/assets/flyin-color-logo.svg"
-import { Button } from "@/components/ui/button"
 import { Footer } from "@/components/footer"
 
 export default async function EditHolidayPage({ params }: { params: Promise<{ id: string }> }) {
@@ -36,26 +35,7 @@ export default async function EditHolidayPage({ params }: { params: Promise<{ id
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/70 supports-[backdrop-filter]:bg-white/60">
-        <div className="container mx-auto px-6 py-3 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3 transition-transform hover:scale-[1.03] duration-200">
-            <img
-              src={flyinLogo.src || flyinLogo}
-              alt="Flyin.to"
-              className="h-7 w-auto"
-            />
-          </Link>
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground hidden md:block">{user.email}</span>
-            <form action="/auth/signout" method="post">
-              <Button variant="ghost" size="sm" aria-label="Sign out">
-                Sign out
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <HolidayHeader userEmail={user.email || ""} showAlertIndicator={false} />
 
       {/* Main Content */}
       <main className="flex-1 container mx-auto px-6 pt-24 pb-16 max-w-3xl animate-fade-in-up">

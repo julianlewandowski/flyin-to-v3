@@ -3,20 +3,19 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Calendar, MapPin, DollarSign, Plane, TrendingDown, Sparkles, Edit } from "lucide-react"
+import { ArrowLeft, Calendar, MapPin, DollarSign, Plane, Sparkles, Edit } from "lucide-react"
 import Link from "next/link"
-import type { Holiday, Flight, AIInsight, Alert, PriceDropAlert as PriceDropAlertType } from "@/lib/types"
+import type { Holiday, Flight, PriceDropAlert as PriceDropAlertType } from "@/lib/types"
 import HolidayHeader from "@/components/holiday-header"
 import FlightList from "@/components/flight-list"
-import GenerateInsightsButton from "@/components/generate-insights-button"
 import AiScoutButton from "@/components/ai-scout-button"
 import VerifyFlightsButton from "@/components/verify-flights-button"
 import UnifiedFlightSearchButton from "@/components/unified-flight-search-button"
 import AutoFlightSearch from "@/components/auto-flight-search"
 import SmartInsightsSection from "@/components/smart-insights"
+import SearchInProgress from "@/components/search-in-progress"
 import PriceTrackingToggle from "@/components/price-tracking-toggle"
 import PriceDropAlert from "@/components/price-drop-alert"
-import GlobalPriceAlertBanner from "@/components/global-price-alert-banner"
 import { Footer } from "@/components/footer"
 
 function getTimeAgo(dateString: string): string {
@@ -45,6 +44,7 @@ export default async function HolidayDetailPage({
   const { id } = await params
   const resolvedSearchParams = await searchParams
   const showCreditsModal = resolvedSearchParams?.creditsExhausted === "1"
+  const justCreated = resolvedSearchParams?.creating === "1"
   const supabase = await createClient()
 
   const {
@@ -84,22 +84,7 @@ export default async function HolidayDetailPage({
     console.error("[Dashboard] Error fetching flights:", flightsError)
   }
 
-  // Fetch AI insights
-  const { data: insights } = await supabase
-    .from("ai_insights")
-    .select("*")
-    .eq("holiday_id", id)
-    .order("created_at", { ascending: false })
-
-  // Fetch alerts (old system)
-  const { data: alerts } = await supabase
-    .from("alerts")
-    .select("*")
-    .eq("holiday_id", id)
-    .order("created_at", { ascending: false })
-    .limit(5)
-
-  // Fetch price drop alerts (new system)
+  // Fetch price drop alerts
   const { data: priceDropAlerts } = await supabase
     .from("price_drop_alerts")
     .select("*")
@@ -110,8 +95,6 @@ export default async function HolidayDetailPage({
 
   const holidayData = holiday as Holiday
   const flightData = (flights as Flight[]) || []
-  const insightData = (insights as AIInsight[]) || []
-  const alertData = (alerts as Alert[]) || []
   const priceDropAlertData = (priceDropAlerts as PriceDropAlertType[]) || []
 
   // Only show old AI Scout if using AI discovery but no destinations AND no old AI results
@@ -122,23 +105,18 @@ export default async function HolidayDetailPage({
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Global Price Alert Banner for this holiday */}
-      {holidayData.has_active_price_alert && (
-        <GlobalPriceAlertBanner holidayId={id} className="fixed top-0 left-0 right-0 z-[60]" />
-      )}
-      
       <HolidayHeader userEmail={user.email || ""} />
 
-      {/* Auto-trigger flight search if needed - disabled by default to prevent errors */}
+      {/* Auto-trigger flight search after holiday creation */}
       <AutoFlightSearch
         holidayId={id}
         hasFlights={flightData.length > 0}
         lastSearchDate={flightData.length > 0 ? flightData[0]?.last_checked || flightData[0]?.created_at : null}
-        autoSearchEnabled={false}
+        autoSearchEnabled={justCreated && flightData.length === 0}
       />
 
       {/* Main Content */}
-      <main className={`flex-1 container mx-auto px-6 pb-16 animate-fade-in-up ${holidayData.has_active_price_alert ? "pt-24" : "pt-20"}`}>
+      <main className="flex-1 container mx-auto px-6 pt-20 pb-16 animate-fade-in-up">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-primary mb-6 transition-colors duration-200 group"
@@ -298,33 +276,6 @@ export default async function HolidayDetailPage({
           </Card>
         )}
 
-        {alertData.length > 0 && (
-          <Card className="mb-8 border-orange-500/20 bg-orange-500/5">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 font-bold text-foreground">
-                <TrendingDown className="h-5 w-5 text-orange-500" />
-                Recent Price Drops
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {alertData.map((alert) => (
-                  <div key={alert.id} className="flex items-center justify-between text-sm p-3 bg-background/50 rounded-lg">
-                    <span className="text-muted-foreground">{new Date(alert.created_at).toLocaleDateString()}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="line-through text-muted-foreground">€{alert.old_price}</span>
-                      <span className="font-bold text-orange-600">€{alert.new_price}</span>
-                      <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 border-orange-500/20">
-                        -{alert.price_drop_percent.toFixed(0)}%
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Flights Section */}
           <div id="flights-section" className="lg:col-span-2">
@@ -338,18 +289,19 @@ export default async function HolidayDetailPage({
                 )}
               </div>
               <div className="flex items-center gap-3 flex-wrap">
-                <UnifiedFlightSearchButton 
-                  holidayId={id} 
+                <UnifiedFlightSearchButton
+                  holidayId={id}
                   hasExistingFlights={flightData.length > 0}
                   initialFlightCount={flightData.length}
                   userEmail={user?.email}
                   initialShowCreditsModal={showCreditsModal}
                 />
-                {flightData.length > 0 && hasAiResults && <VerifyFlightsButton holidayId={id} variant="outline" />}
               </div>
             </div>
 
-            {flightData.length === 0 ? (
+            {flightData.length === 0 && justCreated ? (
+              <SearchInProgress />
+            ) : flightData.length === 0 ? (
               <Card className="border-dashed border-2 border-slate-300 bg-gradient-to-b from-slate-50 to-white">
                 <CardContent className="flex flex-col items-center justify-center py-20 text-center">
                   <div className="relative mb-5">

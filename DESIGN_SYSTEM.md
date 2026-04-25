@@ -126,14 +126,14 @@ This design system defines the visual language and UI components for the Flyin.t
 
 ## Border Radius
 
-- **Sharp Corners**: `rounded-sm` (2px)
-  - Used for: Cards, buttons, containers (signature style)
+The app uses a soft, modern radius scale anchored on `--radius: 0.75rem` in
+`globals.css`. Default to the medium step; reserve the small step for compact
+elements (badges, chips) and pills for circular UI.
 
-- **Standard**: `rounded-md` (6px)
-  - Used for: Smaller elements, inputs
-
-- **Full Rounded**: `rounded-full` (9999px)
-  - Used for: Pills, badges, circular elements
+- **Soft (default)**: `rounded-lg` (12px) — buttons, inputs, cards
+- **Card / panel**: `rounded-xl` (16px) — large containers, dialog
+- **Compact**: `rounded-md` (10px) — chips, dense rows
+- **Pill**: `rounded-full` — badges, avatars, circular icon containers
 
 ---
 
@@ -147,39 +147,16 @@ This design system defines the visual language and UI components for the Flyin.t
 
 ## Buttons
 
-### Primary Button
+All buttons go through `<Button>` (`components/ui/button.tsx`) — never style raw
+buttons. Variants:
 
-```tsx
-className="bg-blue-500 text-white hover:bg-blue-600 font-medium rounded-sm px-6 py-2 transition-all duration-300"
-```
-
-- Background: Primary blue
-- Text: White
-- Hover: Darker blue with scale/glow effect
-- Padding: `px-6 py-2` (or size variants)
-- Border radius: `rounded-sm`
-
-### Secondary Button
-
-```tsx
-className="bg-orange-500 text-white hover:bg-orange-600 font-medium rounded-sm px-6 py-2 transition-all duration-300"
-```
-
-- Background: Primary orange
-- Text: White
-- Hover: Darker orange
-
-### Outline Button
-
-```tsx
-className="border-2 border-gray-300 bg-transparent hover:bg-gray-200 hover:border-gray-400 font-medium rounded-sm px-6 py-2 transition-all duration-300"
-```
-
-### Ghost Button
-
-```tsx
-className="hover:bg-gray-200 font-medium rounded-sm px-6 py-2 transition-all duration-300"
-```
+- **`default`**: blue solid — primary CTAs
+- **`accent`**: orange solid — featured/secondary CTAs
+- **`destructive`**: red solid — destructive actions
+- **`outline`**: white with slate border — paired secondary CTAs
+- **`secondary`**: slate-100 — tertiary actions
+- **`ghost`**: transparent, slate hover — toolbar/menu actions
+- **`link`**: blue text, hover underline — inline links
 
 ### Button Sizes
 

@@ -3,7 +3,9 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Sparkles } from "lucide-react"
+import { Loader2, Sparkles } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
+
 interface AiScoutButtonProps {
   holidayId: string
 }
@@ -15,22 +17,20 @@ export default function AiScoutButton({ holidayId }: AiScoutButtonProps) {
   const handleScout = async () => {
     setIsLoading(true)
     try {
-      // Use Next.js API route (no backend needed)
       const response = await fetch(`/api/holidays/${holidayId}/ai-scout`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to run AI scout")
-      }
-
+      if (!response.ok) throw new Error("Failed to run AI discovery")
       router.refresh()
     } catch (error) {
-      console.error("[v0] Error running AI scout:", error)
-      alert("Failed to run AI discovery. Please try again.")
+      console.error("[AiScoutButton] Error:", error)
+      toast({
+        title: "AI discovery failed",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -38,8 +38,17 @@ export default function AiScoutButton({ holidayId }: AiScoutButtonProps) {
 
   return (
     <Button onClick={handleScout} disabled={isLoading} className="gap-2">
-      <Sparkles className="h-4 w-4" />
-      {isLoading ? "Discovering..." : "Run AI Discovery"}
+      {isLoading ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Discovering…
+        </>
+      ) : (
+        <>
+          <Sparkles className="h-4 w-4" />
+          Run AI Discovery
+        </>
+      )}
     </Button>
   )
 }

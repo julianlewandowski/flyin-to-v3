@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { CheckCircle } from "lucide-react"
+import { CheckCircle, Loader2 } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 
 interface VerifyFlightsButtonProps {
   holidayId: string
@@ -21,14 +22,15 @@ export default function VerifyFlightsButton({ holidayId, variant = "default" }: 
         method: "POST",
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to verify flights")
-      }
-
+      if (!response.ok) throw new Error("Failed to verify flights")
       router.refresh()
     } catch (error) {
-      console.error("[v0] Error verifying flights:", error)
-      alert("Failed to verify flights. Please try again.")
+      console.error("[VerifyFlightsButton] Error:", error)
+      toast({
+        title: "Verification failed",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -36,8 +38,17 @@ export default function VerifyFlightsButton({ holidayId, variant = "default" }: 
 
   return (
     <Button onClick={handleVerify} disabled={isLoading} variant={variant} className="gap-2">
-      <CheckCircle className="h-4 w-4" />
-      {isLoading ? "Verifying..." : variant === "outline" ? "Rescan" : "Verify Flights"}
+      {isLoading ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Verifying…
+        </>
+      ) : (
+        <>
+          <CheckCircle className="h-4 w-4" />
+          {variant === "outline" ? "Rescan" : "Verify Flights"}
+        </>
+      )}
     </Button>
   )
 }

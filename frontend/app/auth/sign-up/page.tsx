@@ -10,9 +10,28 @@ import { Label } from "@/components/ui/label"
 import { Plane } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { GoogleSignInButton } from "@/components/google-sign-in-button"
 import { Footer } from "@/components/footer"
+
+function scorePassword(password: string): { score: number; label: string; color: string } {
+  if (!password) return { score: 0, label: "", color: "" }
+  let score = 0
+  if (password.length >= 8) score++
+  if (password.length >= 12) score++
+  if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++
+  if (/\d/.test(password)) score++
+  if (/[^A-Za-z0-9]/.test(password)) score++
+  const tiers = [
+    { label: "Too short", color: "bg-red-500" },
+    { label: "Weak", color: "bg-red-500" },
+    { label: "Fair", color: "bg-amber-500" },
+    { label: "Good", color: "bg-blue-500" },
+    { label: "Strong", color: "bg-emerald-500" },
+    { label: "Strong", color: "bg-emerald-500" },
+  ]
+  return { score, ...tiers[Math.min(score, 5)] }
+}
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("")
@@ -21,6 +40,7 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const strength = useMemo(() => scorePassword(password), [password])
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -120,6 +140,23 @@ export default function SignUpPage() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                         />
+                        {password.length > 0 && (
+                          <div className="flex items-center gap-2 mt-1" aria-live="polite">
+                            <div className="flex gap-1 flex-1">
+                              {[0, 1, 2, 3, 4].map((i) => (
+                                <div
+                                  key={i}
+                                  className={`h-1 flex-1 rounded-full transition-colors duration-200 ${
+                                    i < strength.score ? strength.color : "bg-slate-200"
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-xs font-medium text-muted-foreground min-w-[60px] text-right">
+                              {strength.label}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="confirm-password" className="text-foreground font-medium">Confirm Password</Label>

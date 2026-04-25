@@ -46,10 +46,19 @@ export default function FlightCard({ flight, onClick }: FlightCardProps) {
   }
 
   return (
-    <Card 
+    <Card
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick?.()
+        }
+      }}
       className={`
-        transition-all duration-300 cursor-pointer group border-border
+        transition-all duration-300 cursor-pointer group border-border outline-none
         hover:shadow-xl hover:border-primary/30 hover:-translate-y-1
+        focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background
         ${priceDropped ? "ring-2 ring-orange-500/20 border-orange-500/40 bg-orange-50/10" : ""}
       `}
       onClick={onClick}

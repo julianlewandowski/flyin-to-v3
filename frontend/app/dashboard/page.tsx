@@ -7,8 +7,8 @@ import { Plus, Calendar, MapPin, DollarSign, TrendingDown, Bell, Plane } from "l
 import Link from "next/link"
 import type { Holiday, PriceDropAlert } from "@/lib/types"
 import { fetchHolidaysForCurrentUser } from "@/lib/backend"
-import GlobalPriceAlertBanner, { InlinePriceAlertIndicator } from "@/components/global-price-alert-banner"
-import flyinLogo from "@/app/assets/flyin-color-logo.svg"
+import GlobalPriceAlertBanner from "@/components/global-price-alert-banner"
+import HolidayHeader from "@/components/holiday-header"
 import { Footer } from "@/components/footer"
 
 export default async function DashboardPage() {
@@ -37,39 +37,19 @@ export default async function DashboardPage() {
       {/* Global Price Alert Banner */}
       <GlobalPriceAlertBanner className="fixed top-0 left-0 right-0 z-[60]" />
       
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/70 supports-[backdrop-filter]:bg-white/60 mt-0 transition-all [.has-alerts_&]:mt-10">
-        <div className="container mx-auto px-6 py-3 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-3 transition-transform hover:scale-[1.03] duration-200">
-            <img
-              src={flyinLogo.src || flyinLogo}
-              alt="Flyin.to"
-              className="h-7 w-auto"
-            />
-          </Link>
-          <div className="flex items-center gap-3">
-            <InlinePriceAlertIndicator />
-            <span className="text-sm font-medium text-muted-foreground hidden md:block">{user.email}</span>
-            <form action="/auth/signout" method="post">
-              <Button variant="ghost" size="sm" aria-label="Sign out">
-                Sign out
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
+      <HolidayHeader userEmail={user.email || ""} />
 
       {/* Main Content */}
       <main className="flex-1 container mx-auto px-6 pt-24 pb-16">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-6 animate-fade-in-up">
           <div>
-            <h1 className="text-3xl md:text-5xl font-black mb-3 text-foreground tracking-tight">Your Holidays</h1>
-            <p className="text-base md:text-lg text-muted-foreground leading-relaxed">Track and manage your flight searches</p>
+            <h1 className="text-3xl md:text-5xl font-black mb-3 text-foreground tracking-tight">Your trips</h1>
+            <p className="text-base md:text-lg text-muted-foreground leading-relaxed">We watch the prices. You book when it's a deal.</p>
           </div>
           <Link href="/dashboard/create">
             <Button size="default" className="w-full md:w-auto font-semibold">
               <Plus className="h-4 w-4 mr-2" />
-              Create Holiday
+              Plan a trip
             </Button>
           </Link>
         </div>
@@ -92,14 +72,14 @@ export default async function DashboardPage() {
                     <Plane className="h-9 w-9" />
                   </div>
                 </div>
-                <h3 className="text-2xl md:text-3xl font-bold mb-3 text-foreground tracking-tight">No holidays yet</h3>
+                <h3 className="text-2xl md:text-3xl font-bold mb-3 text-foreground tracking-tight">Plan your first trip</h3>
                 <p className="text-muted-foreground mb-8 max-w-md leading-relaxed">
-                  Create your first holiday to start tracking flight prices and finding the best deals across multiple destinations.
+                  Tell us where and when. We'll search dozens of fares, then email you the moment the price drops.
                 </p>
                 <Link href="/dashboard/create">
                   <Button size="lg" className="shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30">
                     <Plus className="h-5 w-5 mr-2" />
-                    Create Your First Holiday
+                    Plan a trip
                   </Button>
                 </Link>
               </CardContent>
@@ -108,10 +88,10 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {userHolidays.map((holiday, index) => (
-              <Link 
-                key={holiday.id} 
+              <Link
+                key={holiday.id}
                 href={`/dashboard/holidays/${holiday.id}`}
-                className="block animate-fade-in-up"
+                className="block animate-fade-in-up rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <Card className={`group cursor-pointer h-full hover:border-blue-300 hover:shadow-lg hover:-translate-y-0.5 ${
