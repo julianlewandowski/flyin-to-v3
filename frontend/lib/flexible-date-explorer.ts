@@ -1,9 +1,15 @@
 /**
  * Flexible Date Explorer
- * 
+ *
  * Generates flexible, randomized date candidates across the entire date range
  * and trip-length window. Replaces rigid weekly block logic with intelligent
  * exploration that covers early, mid, and late segments of the date range.
+ *
+ * Phase 4 additions:
+ *   - Optional `seed` for reproducible sampling (so two searches in the same
+ *     week return the same candidates — important for price tracking deltas).
+ *   - Optional `anchors` (dates known to have surfaced cheap flights before)
+ *     to bias a portion of candidates toward the historical best.
  */
 
 export interface DateCandidate {
@@ -13,12 +19,53 @@ export interface DateCandidate {
   start_date_position: "early" | "mid" | "late"
 }
 
+export interface DateAnchor {
+  /** YYYY-MM-DD depart date that previously surfaced a cheap flight. */
+  depart_date: string
+  /** Higher = stronger pull, e.g. inverse of price rank. */
+  weight: number
+}
+
 export interface DateExplorationParams {
   start_date: string // YYYY-MM-DD
   end_date: string // YYYY-MM-DD
   trip_length_min: number
   trip_length_max: number
   target_candidates: number // Target number of candidates (15-25)
+  /** Deterministic seed for reproducible sampling. Defaults to Math.random. */
+  seed?: number
+  /** Known-good depart dates to cluster a portion of candidates around. */
+  anchors?: DateAnchor[]
+  /** 0..1 — share of candidates that should cluster around `anchors`. Default 0.4. */
+  exploit_share?: number
+}
+
+/**
+ * Mulberry32 PRNG. Tiny, deterministic, fine for non-cryptographic sampling.
+ * Returns a function that yields floats in [0, 1) like Math.random().
+ */
+export function createSeededRng(seed: number): () => number {
+  let state = seed >>> 0
+  return function rng() {
+    state = (state + 0x6d2b79f5) >>> 0
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+/**
+ * Stable string→u32 hash for building seeds out of strings like
+ * `${holiday.id}:${ISO_week}`.
+ */
+export function hashStringToSeed(s: string): number {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return h >>> 0
 }
 
 /**
@@ -33,32 +80,80 @@ export function generateFlexibleDateCandidates(
   const startDate = new Date(start_date)
   const endDate = new Date(end_date)
   const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-  
+
   if (totalDays < trip_length_min) {
-    // Range too narrow, generate minimal candidates
     return generateMinimalCandidates(start_date, end_date, trip_length_min, trip_length_max)
   }
 
-  const candidates: DateCandidate[] = []
-  const seen = new Set<string>() // Track unique date pairs
+  const rng: () => number = params.seed !== undefined ? createSeededRng(params.seed) : Math.random
+  const anchors = (params.anchors || []).filter(
+    (a) => a.depart_date >= start_date && a.depart_date <= end_date
+  )
+  const exploitShare = anchors.length > 0 ? Math.min(0.7, Math.max(0, params.exploit_share ?? 0.4)) : 0
+  const exploreCount = Math.max(0, target_candidates - Math.floor(target_candidates * exploitShare))
+  const exploitCount = target_candidates - exploreCount
 
-  // Strategy 1: Evenly spaced samples across the range
-  const evenlySpacedCount = Math.floor(target_candidates * 0.3) // 30% evenly spaced
+  const candidates: DateCandidate[] = []
+  const seen = new Set<string>()
+
+  // Exploit: cluster around known-good anchors (Phase 4 memory).
+  if (exploitCount > 0 && anchors.length > 0) {
+    addAnchorClusteredCandidates(
+      anchors,
+      exploitCount,
+      startDate,
+      endDate,
+      totalDays,
+      trip_length_min,
+      trip_length_max,
+      candidates,
+      seen,
+      params,
+      rng
+    )
+  }
+
+  const remaining = target_candidates - candidates.length
+  // Exploration mix: 30% even / 40% random / 30% clustered, recomputed against
+  // the *remaining* budget after exploit candidates are placed.
+  const evenlySpacedCount = Math.floor(remaining * 0.3)
   for (let i = 0; i < evenlySpacedCount; i++) {
     const progress = evenlySpacedCount > 1 ? i / (evenlySpacedCount - 1) : 0
     const daysFromStart = Math.floor(totalDays * progress)
-    addCandidateForStartDay(startDate, endDate, daysFromStart, trip_length_min, trip_length_max, candidates, seen, params)
+    addCandidateForStartDay(
+      startDate,
+      endDate,
+      daysFromStart,
+      trip_length_min,
+      trip_length_max,
+      candidates,
+      seen,
+      params,
+      undefined,
+      rng
+    )
   }
 
-  // Strategy 2: Random jittered samples
-  const randomCount = Math.floor(target_candidates * 0.4) // 40% random
+  const randomCount = Math.floor(remaining * 0.4)
+  // Clamp to a non-negative window so very narrow ranges don't produce negative offsets.
+  const randomWindow = Math.max(1, totalDays - trip_length_min)
   for (let i = 0; i < randomCount; i++) {
-    const randomDaysFromStart = Math.floor(Math.random() * (totalDays - trip_length_max))
-    addCandidateForStartDay(startDate, endDate, randomDaysFromStart, trip_length_min, trip_length_max, candidates, seen, params)
+    const randomDaysFromStart = Math.floor(rng() * randomWindow)
+    addCandidateForStartDay(
+      startDate,
+      endDate,
+      randomDaysFromStart,
+      trip_length_min,
+      trip_length_max,
+      candidates,
+      seen,
+      params,
+      undefined,
+      rng
+    )
   }
 
-  // Strategy 3: Smart clustered samples (early, mid, late)
-  const clusterCount = Math.floor(target_candidates * 0.3) // 30% clustered
+  const clusterCount = Math.floor(remaining * 0.3)
   const segments = [
     { position: "early" as const, range: [0, totalDays * 0.33] },
     { position: "mid" as const, range: [totalDays * 0.33, totalDays * 0.66] },
@@ -69,22 +164,23 @@ export function generateFlexibleDateCandidates(
     const segmentCount = Math.floor(clusterCount / segments.length)
     for (let i = 0; i < segmentCount; i++) {
       const baseDay = segment.range[0] + (segment.range[1] - segment.range[0]) * (i / (segmentCount || 1))
-      const jitteredDay = baseDay + (Math.random() - 0.5) * (segment.range[1] - segment.range[0]) * 0.3
+      const jitteredDay =
+        baseDay + (rng() - 0.5) * (segment.range[1] - segment.range[0]) * 0.3
       const daysFromStart = Math.max(0, Math.floor(jitteredDay))
-      
+
       const candidate = addCandidateForStartDay(
-        startDate, 
-        endDate, 
-        daysFromStart, 
-        trip_length_min, 
-        trip_length_max, 
-        candidates, 
-        seen, 
+        startDate,
+        endDate,
+        daysFromStart,
+        trip_length_min,
+        trip_length_max,
+        candidates,
+        seen,
         params,
-        segment.position
+        segment.position,
+        rng
       )
-      
-      // Ensure we have at least one candidate near max trip length in each segment
+
       if (candidate && i === 0 && trip_length_max > trip_length_min) {
         const maxTripCandidate = createCandidateWithTripLength(
           startDate,
@@ -102,14 +198,60 @@ export function generateFlexibleDateCandidates(
     }
   }
 
-  // Ensure we have coverage of all trip lengths
   ensureTripLengthCoverage(candidates, startDate, endDate, trip_length_min, trip_length_max, seen, params)
 
-  // Shuffle to avoid deterministic patterns
-  shuffleArray(candidates)
+  shuffleArray(candidates, rng)
 
-  // Limit to target count
   return candidates.slice(0, target_candidates)
+}
+
+/**
+ * Place candidates around each anchor with small jitter (±3 days) so we both
+ * verify the historical-best stays cheap and probe nearby dates that might be
+ * cheaper still. Anchors with higher weight get more candidates.
+ */
+function addAnchorClusteredCandidates(
+  anchors: DateAnchor[],
+  count: number,
+  startDate: Date,
+  endDate: Date,
+  totalDays: number,
+  tripLengthMin: number,
+  tripLengthMax: number,
+  candidates: DateCandidate[],
+  seen: Set<string>,
+  params: DateExplorationParams,
+  rng: () => number
+) {
+  const totalWeight = anchors.reduce((s, a) => s + Math.max(0, a.weight), 0) || anchors.length
+  for (const anchor of anchors) {
+    const share = totalWeight > 0 ? Math.max(0, anchor.weight) / totalWeight : 1 / anchors.length
+    const slots = Math.max(1, Math.round(count * share))
+    const anchorDate = new Date(anchor.depart_date)
+    const anchorDaysFromStart = Math.round(
+      (anchorDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    if (anchorDaysFromStart < 0 || anchorDaysFromStart > totalDays) continue
+
+    for (let i = 0; i < slots; i++) {
+      // ±3 day jitter around the anchor.
+      const jitter = Math.floor(rng() * 7) - 3
+      const daysFromStart = Math.max(0, Math.min(totalDays, anchorDaysFromStart + jitter))
+      addCandidateForStartDay(
+        startDate,
+        endDate,
+        daysFromStart,
+        tripLengthMin,
+        tripLengthMax,
+        candidates,
+        seen,
+        params,
+        undefined,
+        rng
+      )
+      if (candidates.length >= count) return
+    }
+  }
 }
 
 /**
@@ -124,32 +266,30 @@ function addCandidateForStartDay(
   candidates: DateCandidate[],
   seen: Set<string>,
   params: DateExplorationParams,
-  position?: "early" | "mid" | "late"
+  position?: "early" | "mid" | "late",
+  rng: () => number = Math.random
 ): DateCandidate | null {
   const departDate = new Date(startDate)
   departDate.setDate(departDate.getDate() + daysFromStart)
 
   if (departDate >= endDate) return null
 
-  // Sample trip length with better diversity across the full range
-  // Use a more uniform distribution to ensure we get variety (not just 7 or 14 days)
   const tripLengthRange = tripLengthMax - tripLengthMin
-  
-  // Strategy: Use a mix of uniform and weighted sampling for better diversity
+
   let sampledLength: number
-  const randomValue = Math.random()
-  
+  const randomValue = rng()
+
   if (randomValue < 0.4) {
-    // 40%: Uniform distribution across full range (ensures all lengths are possible)
-    sampledLength = tripLengthMin + Math.floor(Math.random() * (tripLengthRange + 1))
+    sampledLength = tripLengthMin + Math.floor(rng() * (tripLengthRange + 1))
   } else if (randomValue < 0.7) {
-    // 30%: Bias toward shorter trips (cheaper)
-    const shorterRange = Math.floor(tripLengthRange * 0.5) // First 50% of range
-    sampledLength = tripLengthMin + Math.floor(Math.random() * shorterRange)
+    const shorterRange = Math.max(1, Math.floor(tripLengthRange * 0.5))
+    sampledLength = tripLengthMin + Math.floor(rng() * shorterRange)
   } else {
-    // 30%: Bias toward longer trips (more vacation time)
     const longerRangeStart = Math.floor(tripLengthRange * 0.5)
-    sampledLength = tripLengthMin + longerRangeStart + Math.floor(Math.random() * (tripLengthRange - longerRangeStart + 1))
+    sampledLength =
+      tripLengthMin +
+      longerRangeStart +
+      Math.floor(rng() * Math.max(1, tripLengthRange - longerRangeStart + 1))
   }
   
   sampledLength = Math.max(tripLengthMin, Math.min(tripLengthMax, sampledLength))
@@ -173,22 +313,14 @@ function addCandidateForStartDay(
   const returnDate = new Date(departDate)
   returnDate.setDate(returnDate.getDate() + sampledLength)
 
-  if (returnDate > endDate) {
-    // Adjust to fit within range
-    returnDate.setTime(endDate.getTime())
-    const adjustedDepart = new Date(returnDate)
-    adjustedDepart.setDate(adjustedDepart.getDate() - sampledLength)
-    if (adjustedDepart < startDate) {
-      return null
-    }
-    departDate.setTime(adjustedDepart.getTime())
-  }
+  // Reject candidates that overrun the window. Previously we mutated departDate
+  // backward to make it fit, which silently shifted the candidate to a different
+  // start day and made its position label ("early"/"mid"/"late") incorrect.
+  if (returnDate > endDate) return null
 
-  // Determine position if not provided
   const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-  const daysFromStartActual = Math.ceil((departDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-  const progress = totalDays > 0 ? daysFromStartActual / totalDays : 0
-  
+  const progress = totalDays > 0 ? daysFromStart / totalDays : 0
+
   const finalPosition: "early" | "mid" | "late" = position || (
     progress < 0.33 ? "early" : progress < 0.66 ? "mid" : "late"
   )
@@ -229,13 +361,7 @@ function createCandidateWithTripLength(
   const returnDate = new Date(departDate)
   returnDate.setDate(returnDate.getDate() + tripLength)
 
-  if (returnDate > endDate) {
-    returnDate.setTime(endDate.getTime())
-    const adjustedDepart = new Date(returnDate)
-    adjustedDepart.setDate(adjustedDepart.getDate() - tripLength)
-    if (adjustedDepart < startDate) return null
-    departDate.setTime(adjustedDepart.getTime())
-  }
+  if (returnDate > endDate) return null
 
   const departStr = departDate.toISOString().split("T")[0]
   const returnStr = returnDate.toISOString().split("T")[0]
@@ -343,7 +469,9 @@ function ensureTripLengthCoverage(
 }
 
 /**
- * Generate minimal candidates when date range is too narrow.
+ * Generate minimal candidates when date range is too narrow for normal sampling.
+ * Enumerates every viable (depart, return) pair within the small window so we
+ * still use the available SerpAPI budget rather than returning a single option.
  */
 function generateMinimalCandidates(
   start_date: string,
@@ -353,32 +481,48 @@ function generateMinimalCandidates(
 ): DateCandidate[] {
   const startDate = new Date(start_date)
   const endDate = new Date(end_date)
-  
+  const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+
   const candidates: DateCandidate[] = []
-  const avgLength = Math.floor((trip_length_min + trip_length_max) / 2)
-  
-  const departDate = new Date(startDate)
-  const returnDate = new Date(departDate)
-  returnDate.setDate(returnDate.getDate() + avgLength)
-  
-  if (returnDate <= endDate) {
-    candidates.push({
-      depart_date: startDate.toISOString().split("T")[0],
-      return_date: returnDate.toISOString().split("T")[0],
-      trip_length_days: avgLength,
-      start_date_position: "early",
-    })
+  const seen = new Set<string>()
+
+  for (let offset = 0; offset <= totalDays; offset++) {
+    for (let length = trip_length_min; length <= trip_length_max; length++) {
+      const depart = new Date(startDate)
+      depart.setDate(depart.getDate() + offset)
+      const ret = new Date(depart)
+      ret.setDate(ret.getDate() + length)
+      if (ret > endDate) continue
+
+      const departStr = depart.toISOString().split("T")[0]
+      const returnStr = ret.toISOString().split("T")[0]
+      const key = `${departStr}:${returnStr}`
+      if (seen.has(key)) continue
+      seen.add(key)
+
+      const progress = totalDays > 0 ? offset / totalDays : 0
+      const position: "early" | "mid" | "late" =
+        progress < 0.33 ? "early" : progress < 0.66 ? "mid" : "late"
+
+      candidates.push({
+        depart_date: departStr,
+        return_date: returnStr,
+        trip_length_days: length,
+        start_date_position: position,
+      })
+    }
   }
-  
+
   return candidates
 }
 
 /**
- * Shuffle array in place using Fisher-Yates algorithm.
+ * Shuffle array in place using Fisher-Yates. RNG is parameterised so seeded
+ * generation produces the same final ordering on repeat calls.
  */
-function shuffleArray<T>(array: T[]): void {
+function shuffleArray<T>(array: T[], rng: () => number = Math.random): void {
   for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [array[i], array[j]] = [array[j], array[i]]
   }
 }

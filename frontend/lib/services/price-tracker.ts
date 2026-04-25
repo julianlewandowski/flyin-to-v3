@@ -16,7 +16,11 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { searchFlightsParallel, type SerpApiFlightSearchParams } from "@/lib/serpapi"
 import { normalizeFlightOffers, extractFlightsFromSerpApiResponse } from "@/lib/normalize-flights"
 import { expandCityAirport } from "@/lib/airports"
-import { generateFlexibleDateCandidates } from "@/lib/flexible-date-explorer"
+import {
+  generateFlexibleDateCandidates,
+  hashStringToSeed,
+  type DateAnchor,
+} from "@/lib/flexible-date-explorer"
 import { filterDateCandidates } from "@/lib/llm-candidate-filter"
 import { createLogger } from "@/lib/utils/logger"
 import {
@@ -29,6 +33,50 @@ import type { Holiday, FlightOffer } from "@/lib/types"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 const logger = createLogger("PriceTracker")
+
+/**
+ * ISO-8601 week key (e.g. "2026-W17"). Same definition as the unified-search
+ * route — duplicated rather than shared to keep this service self-contained.
+ */
+function isoWeekKey(date: Date): string {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+  const day = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - day)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`
+}
+
+/**
+ * Pull the (up to) 3 cheapest historical depart dates for a holiday so the
+ * price-tracker job re-checks dates we know surfaced cheap fares before.
+ */
+async function loadPriceTrackerAnchors(
+  supabase: SupabaseClient,
+  holidayId: string
+): Promise<DateAnchor[]> {
+  try {
+    const { data } = await supabase
+      .from("flights")
+      .select("departure_date, price")
+      .eq("holiday_id", holidayId)
+      .order("price", { ascending: true })
+      .limit(3)
+    if (!data || data.length === 0) return []
+    const seen = new Set<string>()
+    const out: DateAnchor[] = []
+    for (let i = 0; i < data.length; i++) {
+      const d = (data[i] as { departure_date?: string }).departure_date
+      if (!d || seen.has(d)) continue
+      seen.add(d)
+      out.push({ depart_date: d, weight: data.length - i })
+    }
+    return out
+  } catch (err) {
+    logger.warn("loadPriceTrackerAnchors failed", { err: String(err) })
+    return []
+  }
+}
 
 // ============================================================================
 // Types
@@ -288,13 +336,21 @@ async function runPriceCheckForHoliday(
     const tripDurationMin = holiday.trip_duration_min || 3
     const tripDurationMax = holiday.trip_duration_max || 14
 
-    // Generate date candidates using flexible date explorer
+    // Phase 4 — same anchor + seed pattern as the unified search route. The
+    // price-tracker job runs daily; we want today's check to land on the same
+    // candidate dates as the user's most recent search so price deltas track
+    // the same trip rather than a re-randomised one.
+    const anchors = await loadPriceTrackerAnchors(supabase, holidayId)
+    const seed = hashStringToSeed(`${holidayId}:${isoWeekKey(new Date())}`)
+
     const dateCandidates = generateFlexibleDateCandidates({
       start_date: holiday.start_date,
       end_date: holiday.end_date,
       trip_length_min: tripDurationMin,
       trip_length_max: tripDurationMax,
-      target_candidates: 10, // Generate fewer candidates for price check to save API quota
+      target_candidates: 10, // Smaller budget for the daily price check.
+      seed,
+      anchors,
     })
 
     if (dateCandidates.length === 0) {
