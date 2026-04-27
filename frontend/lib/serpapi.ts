@@ -34,17 +34,16 @@ export function hasSerpApiKeys(): boolean {
  */
 const exhaustedKeys = new Set<string>()
 
-/** Returns true if the response indicates a temporary rate limit (429). */
-function isTemporaryRateLimit(status: number, body: string): boolean {
-  if (status === 429) return true
-  const lower = body.toLowerCase()
-  return (
-    lower.includes("rate limit") ||
-    lower.includes("too many requests")
-  )
-}
-
-/** Returns true if the response indicates a permanent quota exhaustion (402/403). */
+/**
+ * Returns true if the response indicates a permanent quota exhaustion.
+ *
+ * SerpAPI monthly-limit responses are inconsistent: sometimes 402/429 with
+ * "quota"/"plan limit" wording, sometimes 200/401 with bodies like "Your
+ * account has run out of searches" or "You've reached your monthly limit".
+ * Match all of these — getting a false positive (treating a transient as
+ * permanent) is fine here because the route surfaces the same modal either
+ * way; missing a true quota-exhaustion silently shows a generic error.
+ */
 function isQuotaExhausted(status: number, body: string): boolean {
   if (status === 402) return true
   const lower = body.toLowerCase()
@@ -52,7 +51,28 @@ function isQuotaExhausted(status: number, body: string): boolean {
     lower.includes("quota") ||
     lower.includes("payment required") ||
     lower.includes("plan limit") ||
-    (lower.includes("exceeded") && lower.includes("search")) // "Search quota exceeded" vs "Rate limit exceeded"
+    lower.includes("out of searches") ||
+    lower.includes("run out") ||
+    lower.includes("ran out") ||
+    lower.includes("monthly limit") ||
+    lower.includes("monthly searches") ||
+    lower.includes("account limit") ||
+    lower.includes("reached your limit") ||
+    lower.includes("no searches") ||
+    lower.includes("searches in your account") ||
+    (lower.includes("exceeded") && lower.includes("search"))
+  )
+}
+
+/** Returns true if the response indicates a temporary rate limit (429). */
+function isTemporaryRateLimit(status: number, body: string): boolean {
+  // Quota exhaustion takes priority — SerpAPI uses 429 for monthly-limit too.
+  if (isQuotaExhausted(status, body)) return false
+  if (status === 429) return true
+  const lower = body.toLowerCase()
+  return (
+    lower.includes("rate limit") ||
+    lower.includes("too many requests")
   )
 }
 

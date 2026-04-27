@@ -1043,15 +1043,32 @@ export async function POST(
       let errorMessage = "No flights found matching your criteria"
       let suggestion = ""
       
-      const isCreditsExhaustedResponse = errors.length > 0 && (() => {
-        const firstError = errors[0]
-        return (
-          firstError.error.includes("SERPAPI_KEYS") ||
-          firstError.error.includes("SERPAPI_KEY") ||
-          firstError.error.includes("quota") ||
-          firstError.error.includes("Quota")
-        )
-      })()
+      // Treat the empty-results case as credits-exhausted whenever every
+      // parallel search failed for a SerpAPI-side reason (quota, monthly
+      // limit, all-keys-exhausted, or any rate-limit chain that left us with
+      // zero offers). The modal copy already handles both "out of credits"
+      // and "try again later" framings, and this is strictly better than
+      // showing a generic "no flights found" error when search is actually
+      // unavailable.
+      const isCreditsExhaustedResponse =
+        errors.length > 0 &&
+        errors.length === searchParamsArray.length &&
+        errors.every((e) => {
+          const msg = e.error.toLowerCase()
+          return (
+            msg.includes("serpapi_keys") ||
+            msg.includes("serpapi_key") ||
+            msg.includes("quota") ||
+            msg.includes("api keys exhausted") ||
+            msg.includes("rate limit") ||
+            msg.includes("out of searches") ||
+            msg.includes("ran out") ||
+            msg.includes("run out") ||
+            msg.includes("monthly limit") ||
+            msg.includes("429") ||
+            msg.includes("402")
+          )
+        })
       if (errors.length > 0) {
         const firstError = errors[0]
         if (firstError.error.includes("SERPAPI_KEYS") || firstError.error.includes("SERPAPI_KEY")) {
